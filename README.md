@@ -1,4 +1,4 @@
-# KV KV Open Source IC Design (336.004) in SS26
+# KV Open Source IC Design (336.004) in SS26
 
 Institute for Integrated Circuits and Quantum Computing (IICQC), Johannes Kepler University (JKU) Linz, Austria
 
@@ -22,3 +22,8 @@ Course material for course 336.004 (KV Open Source IC Design) at the JKU Linz in
     - Analog simulation testbenches for reference filter design.
 * Moodle:
     - Project documentation (PDF)
+
+## Brainstorming:
+
+- ToDo
+
