@@ -25,7 +25,7 @@ Course material for course 336.004 (KV Open Source IC Design) at the JKU Linz in
 
 ## Brainstorming:
 
-- Timeline: 07.04. - 10.04., 8:30 - 12:00
+- Timeline: September 2026
 - Room: SCP3 058
 - IHP130 instead of SKY130
 - CACE instead of RALF
