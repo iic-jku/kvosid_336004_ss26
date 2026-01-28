@@ -25,17 +25,21 @@ Course material for course 336.004 (KV Open Source IC Design) at the JKU Linz in
 
 ## Brainstorming:
 
-- Timeline: ???
+- Timeline: 07.04. - 10.04., 8:30 - 12:00
+- Room: SCP3 058
 - IHP130 instead of SKY130
 - CACE instead of RALF
 - Filter Topology stays the same
 - Circuit Starting Point stays the same
-- gm/ID sizing in Python
 - Grade depending on power consumption
 - Tasks:
-    - Improve the starting point circuit for the given specifications and lower power consumption
-    - Transistor sizing with gm/ID
+    - Port the SKY130 circuits & testbenches to IHP130
+    - Script for Filter Design (consider load of ADC)
+    - Improve the starting point circuit for the given specifications for a lower power consumption
+    - Transistor sizing with gm/ID in Python
     - Mismatch simulation with CACE
-    - Layout (optional)
-        - Goody: tapeout ???
+    - Extension for 3ECTS Seminar Integrierte Schaltungen
+        - Layout
+        - Tapeout
+        - PCB Design (optional)
 
