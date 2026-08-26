@@ -1,9 +1,9 @@
-v {xschem version=3.4.5 file_version=1.2
-}
+v {xschem version=3.4.8RC file_version=1.3}
 G {}
 K {}
 V {}
 S {}
+F {}
 E {}
 T {xamp1 - load N} 1370 -300 0 0 0.4 0.4 {}
 T {xamp1 - diffpair P} 1370 -540 0 0 0.4 0.4 {}
@@ -139,7 +139,7 @@ C {sky130_fd_pr/corner.sym} 190 -270 0 0 {name=CORNER only_toplevel=false corner
 C {devices/code.sym} 60 -270 0 0 {name=STIMULI
 only_toplevel=false
 value="
-.include /foss/designs/xschem/amp_dev_sav.spice
+*.include /foss/designs/xschem/amp_dev_sav.spice
 .options savecurrents
 
 .save all

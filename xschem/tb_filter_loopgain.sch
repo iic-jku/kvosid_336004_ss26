@@ -1,9 +1,9 @@
-v {xschem version=3.4.5 file_version=1.2
-}
+v {xschem version=3.4.8RC file_version=1.3}
 G {}
 K {}
 V {}
 S {}
+F {}
 E {}
 N 1000 -240 1000 -220 {
 lab=vout1}
@@ -271,7 +271,6 @@ C {devices/gnd.sym} 10 -410 0 0 {name=l1 lab=GND}
 C {devices/code.sym} 40 -260 0 0 {name=STIMULI
 only_toplevel=false
 value="
-*.include /foss/designs/filter/ota_casc_3_dev_save.spice
 .options savecurrents
 .options method=gear reltol=.01
 .options sparse
@@ -301,12 +300,6 @@ let tstart = t_delay
 *alter @VIN[SIN] = [ 0 0.01 $&f_sig 0 0 0 ]
 alter @VIN[DC] = 0.0
 
-
-*set fndc = /foss/designs/frontend/frontend_dc.txt
-*set fntran = /foss/designs/frontend/frontend_tran.txt
-*set fnspec = /foss/designs/frontend/frontend_spec.txt
-*set fnhd = /foss/designs/frontend/frontend_hd.txt
-*set fnnoise = /foss/designs/frontend/frontend_noise.txt
 set wr_singlescale
 set wr_vecnames
 option numdgt=3
@@ -470,7 +463,7 @@ C {devices/lab_pin.sym} 1180 -610 3 0 {name=p7 sig_type=std_logic lab=vi_opa_p}
 C {devices/lab_pin.sym} 1180 -510 3 0 {name=p8 sig_type=std_logic lab=vi_opa_n}
 C {devices/lab_pin.sym} 1560 -600 1 0 {name=p9 sig_type=std_logic lab=vo_opa_n}
 C {devices/lab_pin.sym} 1560 -520 3 0 {name=p10 sig_type=std_logic lab=vo_opa_p}
-C {amp.sym} 1190 -740 0 0 {name=xamp1}
+C {amp.sym} 1180 -740 0 0 {name=xamp1}
 C {devices/vsource.sym} 420 -190 0 0 {name=V3 value=1.8
 }
 C {devices/gnd.sym} 420 -130 0 0 {name=l2 lab=GND}
