@@ -2,7 +2,7 @@
 
 ## Requirements
 - **kvosid_336004_ss24** GitHub Repo (clone or download)
-  - `git clone https://github.com/iic-jku/kvosid_336004_ss24.git`
+  - `git clone https://github.com/iic-jku/kvosid_336004_ss26.git`
 
 
 - conda (Miniconda, see **Links** section)
