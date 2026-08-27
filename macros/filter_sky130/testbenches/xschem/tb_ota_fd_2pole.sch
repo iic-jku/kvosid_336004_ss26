@@ -137,7 +137,7 @@ option numdgt=3
 	let ion = vion#branch
 	let vcmo = (voutp1+voutn1)/2
 
-	plot iop ion
+	*plot iop ion
 	plot vid vout vcmo
 	plot v(vip) v(vin) v(voutp1) v(voutn1) vcmo
 
