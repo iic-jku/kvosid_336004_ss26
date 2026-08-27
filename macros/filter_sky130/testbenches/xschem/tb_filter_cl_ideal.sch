@@ -178,11 +178,19 @@ save all
 
 let f_min = 10
 let f_max = 100Meg
-let f_stop = 500k
+let f_stop = 9Meg
+let f_nmin = 100
+let f_nmax = 5Meg
 
-let Adc = 2
-let err_gain_spec = 0.004
-let v_step_o = 0.9
+let n_bits = 8
+let Adc = 10
+let v_fs = 1.0
+let v_lsb = v_fs/2^n_bits
+let v_qn = v_lsb/sqrt(12)
+let err_gain_spec = v_lsb/v_fs
+let vo_n_max = 113e-6
+
+let v_step_o = v_fs
 let v_step_i = v_step_o/Adc
 
 let t_rf = 0.1u
@@ -210,7 +218,7 @@ if $opSimOnly eq 0
 	ac dec 100 $&const.f_min $&const.f_max
 	*set sqrnoise
 	noise v(vout) VIN dec 100 $&const.f_min $&const.f_max 1
-	noise v(vout) VIN dec 10 1 50Meg
+	noise v(vout) VIN dec 10 $&const.f_nmin $&const.f_nmax
 	alter @VIN[PULSE] = [ 0 $&v_step_i $&t_delay $&t_rf $&t_rf $&t_step $&t_per 0 ]
 	** Check power on by ramping Vdd, tie di_pon to VDD net!
 	*alter @V1[PULSE] = [ 0 1.8 0 10u $&t_rf 0 0 0 ]
@@ -231,17 +239,19 @@ if $opSimOnly eq 0
 	meas ac Amin min_at Amag_dB from=const.f_min to=fc
 	meas ac Amax max Amag_dB
 	meas ac Astop find Amag_dB when frequency = const.f_stop
+	let att_db = Adc_ol_dB-Astop
 	
 	meas ac fug find frequency when Amag_dB=0
 	let err_gain_act = 1-10^(Adc_ol_dB/20)/Adc
-	let Adc_ol_min = Adc*(1-err_gain_spec)/err_gain_spec
+	let Adc_ol_min = (1+Adc)*(1-err_gain_spec)/err_gain_spec
 	let Adc_ol_min_dB = vdb(Adc_ol_min)
 	print err_gain_act*100
 	print Adc_ol_min_dB
+	print att_db
 	plot Amag_dB Aarg ylabel 'Magnitude, Phase'
 	
 	setplot noise4
-	let p_noise_q = (1e-3)^2
+	let p_noise_q = const.v_qn^2
 	let p_noise_o = onoise_total^2
 	let p_sig_o = (v_step_o/(2*sqrt(2)))^2
 	let snr = p_sig_o/(p_noise_o+p_noise_q)
@@ -280,7 +290,7 @@ C {devices/vsource.sym} 540 -610 3 0 {name=VIINP value=0
 C {devices/vsource.sym} 540 -530 3 0 {name=VIINN value=0
 }
 C {devices/res.sym} 660 -620 3 0 {name=R1
-value=650k
+value=10.82k
 footprint=1206
 device=resistor
 m=1}
@@ -288,37 +298,37 @@ C {devices/lab_pin.sym} 930 -170 2 1 {name=l5 sig_type=std_logic lab=voutn1}
 C {devices/lab_pin.sym} 930 -210 0 0 {name=l6 sig_type=std_logic lab=voutp1
 }
 C {devices/res.sym} 740 -690 0 0 {name=R2
-value=1.3Meg
+value=108.23k
 footprint=1206
 device=resistor
 m=1}
 C {devices/res.sym} 810 -620 3 0 {name=R3
-value=100k
+value=4.62k
 footprint=1206
 device=resistor
 m=1}
 C {devices/capa.sym} 740 -570 0 0 {name=C1
 m=1
-value=10p
+value=25.30p
 footprint=1206
 device="ceramic capacitor"}
 C {devices/capa.sym} 1540 -570 0 0 {name=C3
 m=1
-value=1p
+value=0.5p
 footprint=1206
 device="ceramic capacitor"}
 C {devices/res.sym} 660 -520 3 0 {name=R11
-value=650k
+value=10.82k
 footprint=1206
 device=resistor
 m=1}
 C {devices/res.sym} 740 -450 0 0 {name=R21
-value=1.3Meg
+value=108.23k
 footprint=1206
 device=resistor
 m=1}
 C {devices/res.sym} 810 -520 3 0 {name=R31
-value=100k
+value=4.62k
 footprint=1206
 device=resistor
 m=1}
@@ -328,12 +338,12 @@ value=1p
 footprint=1206
 device="ceramic capacitor"}
 C {devices/res.sym} 1470 -610 3 0 {name=R4
-value=800k
+value=159k
 footprint=1206
 device=resistor
 m=1}
 C {devices/res.sym} 1470 -530 3 0 {name=R41
-value=800k
+value=159k
 footprint=1206
 device=resistor
 m=1}
@@ -357,7 +367,7 @@ C {devices/vsource.sym} 1270 -610 3 0 {name=VIOP value=0
 }
 C {devices/vsource.sym} 1270 -530 3 1 {name=VION value=0
 }
-C {devices/vsource.sym} 440 -180 0 0 {name=V1 value=1.8
+C {devices/vsource.sym} 440 -180 0 0 {name=V1 value=1.5
 }
 C {devices/gnd.sym} 440 -120 0 0 {name=l4 lab=GND}
 C {devices/vdd.sym} 440 -250 0 0 {name=l2 lab=VDD}
@@ -374,12 +384,12 @@ C {devices/lab_wire.sym} 420 -570 0 0 {name=l9 sig_type=std_logic lab=vcmi}
 C {devices/lab_wire.sym} 490 -530 0 0 {name=l20 sig_type=std_logic lab=vip}
 C {devices/lab_wire.sym} 490 -610 0 0 {name=l21 sig_type=std_logic lab=vin
 }
-C {devices/vsource.sym} 590 -180 0 0 {name=V2 value=0.9
+C {devices/vsource.sym} 590 -180 0 0 {name=V2 value=0.75
 }
 C {devices/gnd.sym} 590 -120 0 0 {name=l24 lab=GND}
 C {devices/lab_wire.sym} 590 -250 1 0 {name=l31 sig_type=std_logic lab=vcmi}
 C {devices/launcher.sym} 130 -790 0 0 {name=h2
 descr="Annotate OP"
 tclcommand="set show_hidden_texts 1; xschem annotate_op"}
-C {ota_fd_2pole.sym} 970 -670 0 0 {name=xota1 GM=1000u RO=2Meg CO=1p RP=0 CP=0.1p VCMO=0.9 I0=1u}
+C {ota_fd_2pole.sym} 970 -670 0 0 {name=xota1 GM=25.1m RO=2Meg CO=12.1p RP=0 CP=0.1p VCMO=0.75 I0=100u}
 C {devices/lab_wire.sym} 970 -570 0 0 {name=l25 sig_type=std_logic lab=vcmi}
