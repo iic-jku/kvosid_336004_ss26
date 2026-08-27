@@ -231,7 +231,7 @@ let f_stop = 5Meg
 let tper_sig = 1/f_sig
 let tfr_sig = tper_sig/2
 let Adc = 10
-let beta = 1/Adc
+let beta = 1/(1+Adc)
 let v_step_o = 0.9
 let v_step_i = v_step_o/Adc
 
@@ -279,11 +279,10 @@ option numdgt=3
 
 	print pm
 
-	let err_gain = 1-10^(Adc/20)/10
-	let Adc_ol_min = (1-err_gain)/err_gain
+	meas ac L0_dB find L_dB when frequency = fdc
+	let err_gain = 1/(1+10^(L0_dB/20))
 
 	print err_gain
-	print Adc_ol_min
 	
 	plot L_dB L_arg A_dB A_arg title 'Bode Plot of Loop Gain' ylabel 'Magnitude (dB) / Phase (Deg)'
 	plot L_im vs L_re retraceplot title 'Nyquist Plot of Loop Gain' ylabel 'Imaginary Part' xlabel 'Real Part' 

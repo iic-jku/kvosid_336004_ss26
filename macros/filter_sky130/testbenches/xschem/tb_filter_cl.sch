@@ -257,7 +257,7 @@ if $opSimOnly eq 0
 	
 	meas ac fug find frequency when Amag_dB=0
 	let err_gain_act = 1-10^(Adc_ol_dB/20)/Adc
-	let Adc_ol_min = Adc*(1-err_gain_spec)/err_gain_spec
+	let Adc_ol_min = (1+Adc)*(1-err_gain_spec)/err_gain_spec
 	let Adc_ol_min_dB = vdb(Adc_ol_min)
 	print err_gain_act*100
 	print Adc_ol_min_dB
