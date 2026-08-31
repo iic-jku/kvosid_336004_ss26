@@ -13,7 +13,9 @@
 #      (biquad plus a unity-gain output stage) whose amplifiers are the behavioural
 #      single-stage ota_fd_2pole macro model. Exercised by filter_cl_ideal_tb.sch and
 #      characterised by verification/cace/filter.yaml (make sim-cace). ota_fd_2pole_tb.sch
-#      exercises the macro on its own.
+#      exercises the macro on its own. verification/cace/filter_gbw.yaml (make sim-cace-gbw)
+#      sweeps the macro GBW and checks the measured biquad f_n against the closed-form
+#      rule of thumb derived in the lecture appendix.
 #
 # Because the amplifier is behavioural, supply current, process corners and mismatch are
 # declared in the CACE datasheet but inert until a transistor OTA replaces the macro.
@@ -148,6 +150,15 @@ sim-cace: ## Run CACE simulations of the filter and collect result plots
 	rm -rf _runs/RUN_*
 	cd $(CACE_DIR) && rm -rf _runs _docs netlist
 .PHONY: sim-cace
+
+sim-cace-gbw: ## Run the CACE GBW sweep that verifies the biquad f_n rule of thumb
+	cd $(CACE_DIR) && \
+	mkdir -p results && \
+	cace filter_gbw.yaml -p gbw_params; \
+	cp _runs/RUN_*/parameters/gbw_params/*.png results/ 2>/dev/null || true; \
+	rm -rf _runs/RUN_*
+	cd $(CACE_DIR) && rm -rf _runs _docs netlist
+.PHONY: sim-cace-gbw
 
 # NOTE: filter_sky130 has no layout yet, so the build/DRC/LVS/PEX targets below cannot
 # run. The cell names (filter, filter_top) are in place for when one exists.

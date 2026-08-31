@@ -1,0 +1,270 @@
+# SPDX-FileCopyrightText: 2026 Michael Koefinger
+# SPDX-License-Identifier: Apache-2.0 WITH SHL-2.1
+#
+#--------------------------------------------------------------
+# CACE circuit characterization file -- GBW sweep of the MFB biquad
+#
+# Purpose: verify by simulation the closed-form result derived in the lecture
+# appendix ("Origin of the GBW Rule of Thumb"),
+#
+#     dwn/wn ~ -(Q*fn/f_ug) * (1/beta0 + R2/R3) / 2 ,
+#
+# which at minimum capacitor spread collapses to f_ug >= (1/delta)*Q*fn/beta0,
+# i.e. the (10...100)*Q*fn/beta0 rule of thumb for delta = 10 % ... 1 %.
+#
+# Method: the DUT is the same schematic/xschem/filter.sch used by filter.yaml.
+# The probe is the BIQUAD output (xdut.oo_p - xdut.oo_n), not the filter output,
+# because the proof is about the complex pole pair of the MFB section alone.
+# f_n is measured as the quadrature point (phase = -90 deg) of that response,
+# which is exact for a second-order pair and independent of Q.
+#
+# NOTE: name must stay 'filter' -- CACE derives the DUT schematic from it.
+#
+# The OTA macro is pinned to a clean single-pole voltage amplifier so that GBW
+# is the only non-ideality left: ro is raised so the dc gain never binds, cp is
+# made negligible so no second pole appears near f_ug, and only gm is swept.
+# f_ug = gm/(2*pi*co), so co is held at 12.1 pF and gm carries the sweep.
+#--------------------------------------------------------------
+
+name:           filter
+description:    GBW sweep of the AAF biquad, verifies the appendix GBW rule of thumb
+PDK:            ihp-sg13cmos5l
+
+cace_format:    5.2
+
+authorship:
+  designer:         Michael Koefinger
+  company:          Johannes Kepler University
+  creation_date:    August 31, 2026
+  license:          Apache-2.0 WITH SHL-2.1
+
+paths:
+  root:             ..
+  schematic:        ../schematic/xschem
+  netlist:          cace/netlist
+  documentation:    cace/_docs
+  runs:             cace/_runs
+
+pins:
+  vip:
+    description: Positive filter input
+    type: signal
+    direction: input
+  vin:
+    description: Negative filter input
+    type: signal
+    direction: input
+  vcm:
+    description: Input and output common-mode reference
+    type: signal
+    direction: input
+  vop:
+    description: Positive filter output
+    type: signal
+    direction: output
+  von:
+    description: Negative filter output
+    type: signal
+    direction: output
+
+default_conditions:
+  vdd:
+    description: Supply voltage
+    display: VDD
+    unit: V
+    typical: 1.5
+  vcm:
+    description: Common-mode level of input and output
+    display: Vcm
+    unit: V
+    typical: 0.75
+  corner_mos:
+    description: Process corner MOSFET (inert while the amplifier is the macro)
+    display: Corner MOSFET
+    typical: tt
+  corner_r:
+    description: Process corner resistor
+    display: Corner R
+    typical: typ
+  temp:
+    description: Ambient temperature
+    display: Temperature
+    unit: °C
+    typical: 27
+  rload:
+    description: ADC input resistance, differential
+    display: Rload
+    unit: Ω
+    typical: 560e3
+  cload:
+    description: ADC input capacitance, differential
+    display: Cload
+    unit: F
+    typical: 5e-12
+  fsig:
+    description: Unused here, kept so the shared stimulus source netlists
+    display: f_sig
+    unit: Hz
+    typical: 1e6
+  vamp:
+    description: Unused in ac analysis, the ac drive is 1 V
+    display: V_in
+    unit: V
+    typical: 0.05
+
+  # ---- OTA macro pinned to a clean single-pole voltage amplifier -------------
+  gm:
+    description: OTA transconductance, carries the GBW sweep (f_ug = gm/(2*pi*co))
+    display: GM
+    unit: S
+    typical: 0.0250888
+  ro:
+    description: OTA output resistance, deliberately huge so the dc gain never binds
+    display: RO
+    unit: Ω
+    typical: 1e9
+  co:
+    description: OTA output capacitance, fixed so gm alone sets f_ug
+    display: CO
+    unit: F
+    typical: 12.1e-12
+  rp:
+    description: OTA input series resistance
+    display: RP
+    unit: Ω
+    typical: 1
+  cp:
+    description: OTA input capacitance, negligible so no second pole sits near f_ug
+    display: CP
+    unit: F
+    typical: 1e-15
+  i0:
+    description: OTA tail current, irrelevant for a small-signal ac run
+    display: I0
+    unit: A
+    typical: 100e-6
+
+parameters:
+
+  gbw_params:
+    spec:
+      f_n:
+        display: Biquad f_n (measured)
+        description: Quadrature point of the biquad response, equals the natural
+          frequency of the complex pole pair
+        unit: Hz
+        minimum:
+          value: any
+        typical:
+          value: any
+        maximum:
+          value: any
+      q_bq:
+        display: Biquad Q (measured)
+        description: Extracted from the pass-band peaking of the biquad response
+        minimum:
+          value: 0.9
+        typical:
+          value: 1.0
+        maximum:
+          value: 1.1
+      a_dc_db:
+        display: Biquad dc gain
+        description: Low-frequency gain of the MFB section
+        unit: dB
+        minimum:
+          value: 19.5
+        typical:
+          value: 20.0
+        maximum:
+          value: 20.5
+      f_ug:
+        display: OTA f_ug
+        description: Unity-gain frequency of the macro, gm/(2*pi*co)
+        unit: Hz
+        minimum:
+          value: any
+        typical:
+          value: any
+        maximum:
+          value: any
+      dev_meas_pct:
+        display: f_n deviation, measured (%)
+        description: Simulated droop of f_n against the ideal-OTA design value
+        minimum:
+          value: any
+        typical:
+          value: any
+        maximum:
+          value: any
+      dev_pred_pct:
+        display: f_n deviation, theory (%)
+        description: Appendix closed form, -(Q*fn/f_ug)*(1/beta0 + R2/R3)/2
+        minimum:
+          value: any
+        typical:
+          value: any
+        maximum:
+          value: any
+      err_pct:
+        display: Theory vs simulation (%)
+        description: THE CHECK -- relative disagreement between the measured f_n
+          and the appendix prediction. First-order perturbation, so it must stay
+          small wherever the droop itself is small. NOTE, do not give these three
+          parameters the unit percent, because CACE then rescales the result by 100.
+        minimum:
+          value: any
+        typical:
+          value: any
+        maximum:
+          value: 5.0
+    tool:
+      ngspice:
+        template: filter_gbw_ac.sch
+        format: ascii
+        suffix: .data
+        variables: [f_n, q_bq, a_dc_db, f_ug, dev_meas_pct, dev_pred_pct, err_pct]
+    plot:
+      f_n_vs_f_ug:
+        type: xyplot
+        xaxis: gm
+        yaxis: f_n
+        limits: auto
+      err_vs_f_ug:
+        type: xyplot
+        xaxis: gm
+        yaxis: err_pct
+        limits: auto
+      q_vs_f_ug:
+        type: xyplot
+        xaxis: gm
+        yaxis: q_bq
+        limits: auto
+    conditions:
+      # f_ug = 100 MHz, 200 MHz, 330 MHz, 660 MHz, 1 GHz, 3.3 GHz
+      gm:
+        enumerate: [0.00760265, 0.0152053, 0.0250888, 0.0501775, 0.0760265, 0.250888]
+      co:
+        typical: 12.1e-12
+      ro:
+        typical: 1e9
+      rp:
+        typical: 1
+      cp:
+        typical: 1e-15
+      i0:
+        typical: 100e-6
+      vdd:
+        typical: 1.5
+      vcm:
+        typical: 0.75
+      corner_mos:
+        typical: tt
+      corner_r:
+        typical: typ
+      temp:
+        typical: 27
+      rload:
+        typical: 560e3
+      cload:
+        typical: 5e-12
