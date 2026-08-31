@@ -292,7 +292,7 @@ alter @VIN[DC] = 0
 op
 
 remzerovec
-write tb_filter_loopgain.raw
+write filter_loopgain_tb.raw
 .endc"}
 C {devices/vcvs.sym} 620 -180 0 0 {name=E4 value=1}
 C {devices/gnd.sym} 620 -120 0 0 {name=l18 lab=GND}

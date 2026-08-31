@@ -1,10 +1,30 @@
 # SPDX-FileCopyrightText: 2026 Simon Dorrer and Harald Pretl
 # SPDX-License-Identifier: Apache-2.0 WITH SHL-2.1
+#
+# Template macro for the anti-aliasing filter of KV 336.004 (Open Source IC Design, SS26).
+#
+# It holds two things, and neither is a finished design:
+#
+#   1. The original SKY130 example - the transistor-level amplifier schematic/xschem/amp.sch
+#      with its testbenches filter_cl_tb.sch, filter_loopgain_tb.sch and amp_ol_tb.sch.
+#      These still instantiate SKY130 devices and have NOT been ported to SG13CMOS5L.
+#
+#   2. The updated SS26 filter - schematic/xschem/filter.sch, a 3rd-order MFB low-pass
+#      (biquad plus a unity-gain output stage) whose amplifiers are the behavioural
+#      single-stage ota_fd_2pole macro model. Exercised by filter_cl_ideal_tb.sch and
+#      characterised by verification/cace/filter.yaml (make sim-cace). ota_fd_2pole_tb.sch
+#      exercises the macro on its own.
+#
+# Because the amplifier is behavioural, supply current, process corners and mismatch are
+# declared in the CACE datasheet but inert until a transistor OTA replaces the macro.
+#
+# There is no layout, so the build/DRC/LVS/PEX targets cannot run; the cell names
+# (filter, filter_top) are placeholders. scripts/sizing/ is kept as a gm/ID template.
 
 MAKEFILE_DIR := $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 
 # Variables
-TOP = inverter_top
+TOP = filter_top
 
 .DEFAULT_GOAL := help
 
@@ -76,7 +96,7 @@ help: ## Show this help message
 	@echo 'THRESHOLD/MINRES/MINDELAY are full-RC (EXT_MODE=3) extresist settings for magic-pex (defaults 10000 mOhm / 1000 mOhm / 1 ps).'
 	@echo 'DRC_LEVEL defaults to macro. Sets the KLayout DRC level for klayout-drc (precheck|macro|regular).'
 	@echo 'EV_PRECISION defaults to 5 significant digits for xschem ev function.'
-	@echo 'TB selects the Xschem testbench for sim-xschem (default: <CELL>_tb_tran).'
+	@echo 'TB selects the Xschem testbench for sim-xschem (default: filter_cl_ideal_tb).'
 	@echo 'SCRIPT selects the plotting script for sim-view-xschem (default: plot_<CELL>).'
 	@echo 'OPEN_ARGS passes extra options to sak-open.py for the open target (e.g. --all).'
 .PHONY: help
@@ -91,9 +111,9 @@ open: ## Open the design files of this folder in the sak-open.py file browser (n
 
 
 # Simulation Targets
-# Testbench for the Xschem simulation targets (default: <CELL>_tb_tran)
+# Testbench for the Xschem simulation targets
 # Override with: make <target> TB=<testbenchname>
-TB ?= $(CELL)_tb_tran
+TB ?= filter_cl_ideal_tb
 # Plotting script for sim-view-xschem (default: plot_<CELL>)
 # Override with: make <target> SCRIPT=<scriptname>
 SCRIPT ?= plot_$(CELL)
@@ -115,33 +135,27 @@ sim-view-xschem: ## Plot Xschem simulation results (usage: make sim-view-xschem 
 	SHOW_PLOTS=1 python3 $(SIM_PLOT_DIR)/$(SCRIPT).py
 .PHONY: sim-view-xschem
 
-sim-cace: ## Run CACE simulations and collect result plots
+sim-cace: ## Run CACE simulations of the filter and collect result plots
 	cd $(CACE_DIR) && \
-	mkdir -p results/inverter && \
-	\
-	cace inverter.yaml -p ac_mm_params && \
-	cp _runs/RUN_*/parameters/ac_mm_params/Adc_ol_dB_mm.png results/inverter/ && \
-	cp _runs/RUN_*/parameters/ac_mm_params/fcu_mm.png results/inverter/ && \
-	rm -rf _runs/RUN_* && \
-	\
-	cace inverter.yaml -p ac_mc_params && \
-	cp _runs/RUN_*/parameters/ac_mc_params/Adc_ol_dB_mc.png results/inverter/ && \
-	cp _runs/RUN_*/parameters/ac_mc_params/fcu_mc.png results/inverter/ && \
-	rm -rf _runs/RUN_* && \
-	\
-	cace inverter.yaml -p ac_params && \
-	cp _runs/RUN_*/parameters/ac_params/Adc_ol_dB_vs_vdd.png results/inverter/ && \
-	cp _runs/RUN_*/parameters/ac_params/fcu_vs_vdd.png results/inverter/ && \
-	rm -rf _runs/RUN_* && \
-	\
-	rm -rf _runs _docs netlist
+	mkdir -p results && \
+	rm -f scripts/filter_tb_ac.csv && \
+	cace filter.yaml -p ac_params; \
+	cp _runs/RUN_*/parameters/ac_params/*.png results/ 2>/dev/null || true; \
+	rm -rf _runs/RUN_*
+	cd $(CACE_DIR) && \
+	cace filter.yaml -p thd_params; \
+	cp _runs/RUN_*/parameters/thd_params/*.png results/ 2>/dev/null || true; \
+	rm -rf _runs/RUN_*
+	cd $(CACE_DIR) && rm -rf _runs _docs netlist
 .PHONY: sim-cace
 
+# NOTE: filter_sky130 has no layout yet, so the build/DRC/LVS/PEX targets below cannot
+# run. The cell names (filter, filter_top) are in place for when one exists.
+
+
 sim-all: ## Simulate the macro
-	$(MAKE) sim-xschem TB=inverter_tb_ac_ol
-	$(MAKE) sim-xschem TB=inverter_tb_tran
-	$(MAKE) sim-xschem TB=inverter_tb_dc_vout
-	$(MAKE) sim-xschem TB=inverter_top_tb_tran
+#	$(MAKE) sim-xschem TB=inverter_top_tb_tran
+	$(MAKE) sim-xschem
 	$(MAKE) sim-cace
 .PHONY: sim-all
 # ================================================================================================
@@ -391,8 +405,8 @@ klayout-verify: ## Verify CELL cell with KLayout (usage: make klayout-verify [CE
 .PHONY: klayout-verify
 
 klayout-verify-all: ## Verify all main subcells with KLayout (DRC, LVS)
-	$(MAKE) klayout-verify CELL=inverter
-	$(MAKE) klayout-verify CELL=inverter_top
+	$(MAKE) klayout-verify CELL=filter
+	$(MAKE) klayout-verify CELL=filter_top
 .PHONY: klayout-verify-all
 
 magic-verify: ## Verify CELL cell with Magic (usage: make magic-verify [CELL=<cellname>])
@@ -402,8 +416,8 @@ magic-verify: ## Verify CELL cell with Magic (usage: make magic-verify [CELL=<ce
 .PHONY: magic-verify
 
 magic-verify-all: ## Verify all main subcells with Magic (DRC, LVS, PEX)
-	$(MAKE) magic-verify CELL=inverter
-	$(MAKE) magic-verify CELL=inverter_top
+	$(MAKE) magic-verify CELL=filter
+	$(MAKE) magic-verify CELL=filter_top
 .PHONY: magic-verify-all
 # ================================================================================================
 

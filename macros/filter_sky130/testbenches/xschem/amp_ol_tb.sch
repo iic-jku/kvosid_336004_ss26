@@ -5,51 +5,37 @@ V {}
 S {}
 F {}
 E {}
-N 440 -290 440 -260 {
-lab=VDD}
 N 440 -200 440 -170 {
 lab=GND}
-N 440 -300 440 -290 {
+N 440 -300 440 -260 {
 lab=VDD}
 N 210 -590 210 -550 {
 lab=vid}
 N 210 -490 210 -420 {
 lab=GND}
-N 630 -660 640 -660 {
+N 630 -660 720 -660 {
 lab=vi_p}
-N 630 -500 640 -500 {
-lab=vi_n}
-N 640 -660 670 -660 {
-lab=vi_p}
-N 640 -500 670 -500 {
+N 630 -500 720 -500 {
 lab=vi_n}
 N 520 -200 520 -170 {
 lab=GND}
 N 920 -470 920 -440 {
 lab=GND}
-N 520 -660 570 -660 {
-lab=vip}
-N 520 -500 570 -500 {
-lab=vin}
 N 920 -710 920 -680 {
 lab=VDD}
 N 810 -230 810 -200 {
 lab=GND}
-N 670 -660 720 -660 {
-lab=vi_p}
 N 720 -660 720 -620 {
 lab=vi_p}
 N 720 -620 780 -620 {
 lab=vi_p}
-N 670 -500 720 -500 {
-lab=vi_n}
 N 720 -540 720 -500 {
 lab=vi_n}
 N 720 -540 780 -540 {
 lab=vi_n}
-N 1050 -620 1100 -620 {
+N 1050 -620 1140 -620 {
 lab=voutn}
-N 1050 -540 1100 -540 {
+N 1050 -540 1140 -540 {
 lab=voutp}
 N 520 -300 520 -260 {
 lab=di_pon}
@@ -59,11 +45,11 @@ N 1140 -440 1140 -420 {
 lab=GND}
 N 1140 -740 1140 -720 {
 lab=GND}
-N 1100 -540 1180 -540 {
+N 1140 -540 1180 -540 {
 lab=voutp}
 N 1140 -540 1140 -500 {
 lab=voutp}
-N 1100 -620 1180 -620 {
+N 1140 -620 1180 -620 {
 lab=voutn}
 N 1140 -660 1140 -620 {
 lab=voutn}
@@ -76,22 +62,17 @@ lab=vout}
 N 810 -330 860 -330 {
 lab=vout}
 N 340 -510 340 -420 {lab=GND}
-N 460 -630 460 -620 {lab=vip}
 N 450 -620 460 -620 {lab=vip}
-N 460 -540 460 -530 {lab=vin}
+N 460 -540 460 -500 {lab=vin}
 N 450 -540 460 -540 {lab=vin}
 N 210 -590 290 -590 {lab=vid}
-N 460 -530 460 -500 {lab=vin}
-N 460 -500 520 -500 {lab=vin}
-N 460 -660 460 -630 {lab=vip}
-N 460 -660 520 -660 {lab=vip}
+N 460 -500 570 -500 {lab=vin}
+N 460 -660 460 -620 {lab=vip}
+N 460 -660 570 -660 {lab=vip}
 N 450 -580 510 -580 {lab=vcmi}
-N 590 -280 590 -260 {
-lab=vcmi}
-N 590 -200 590 -180 {
+N 590 -200 590 -170 {
 lab=GND}
-N 590 -180 590 -170 {lab=GND}
-N 590 -300 590 -280 {lab=vcmi}
+N 590 -300 590 -260 {lab=vcmi}
 C {devices/vsource.sym} 440 -230 0 0 {name=V3 value=1.8
 }
 C {devices/gnd.sym} 440 -170 0 0 {name=l4 lab=GND}
@@ -179,7 +160,7 @@ op
 *rm /foss/designs/filter/dc.txt
 *show >> /foss/designs/filter/dc.txt
 remzerovec
-write tb_amp_ol.raw
+write amp_ol_tb.raw
 .endc"}
 C {devices/vdd.sym} 440 -300 0 0 {name=l2 lab=VDD}
 C {devices/vsource.sym} 210 -520 0 0 {name=VIN value="0 AC 1"

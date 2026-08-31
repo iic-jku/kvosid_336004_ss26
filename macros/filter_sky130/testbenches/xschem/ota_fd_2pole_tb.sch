@@ -146,7 +146,7 @@ alter @VIN[DC] = 0
 op
 
 remzerovec
-write tb_ota_fd_2pole.raw
+write ota_fd_2pole_tb.raw
 .endc"}
 C {devices/gnd.sym} 1120 -110 0 0 {name=l14 lab=GND}
 C {devices/gnd.sym} 390 -320 0 0 {name=l15 lab=GND}
