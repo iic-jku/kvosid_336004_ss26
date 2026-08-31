@@ -2,3 +2,5 @@
 *.raw
 *.pyc
 *.ext
+*.spice
+*.save
