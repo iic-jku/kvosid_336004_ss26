@@ -1,7 +1,7 @@
 # Usage of `filter_design.py`
 
 ## Requirements
-- **kvosid_336004_ss24** GitHub Repo (clone or download)
+- **kvosid_336004_ss26** GitHub Repo (clone or download)
   - `git clone https://github.com/iic-jku/kvosid_336004_ss26.git`
 
 
