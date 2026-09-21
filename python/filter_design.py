@@ -6,6 +6,14 @@
 
 # Created: 22.02.2024
 #
+
+import warnings
+
+# python-control >= 0.10: matlab-mode bode()/pzmap() always request the legacy
+# tuple return (wrappers.py sets plot=True), which raises a FutureWarning.
+# The return values are not used here, so the warning is silenced.
+warnings.simplefilter('ignore', FutureWarning)
+
 import scipy.signal as scs
 from math import pi
 from control.matlab import *
@@ -40,14 +48,14 @@ def calc_rc_mfb_biquad(a0=1.0, wp=1e7, qp=1.0, k_c=50, c2=0.1e-12, use_a=True):
             a0: DC Gain
             wp: pole frequency in rad/s
             qp: pole quality factor
-            k_c: capacitance ratio C1/C2 (input pole capactor C1, feedback capactor C2)
+            k_c: capacitance ratio C1/C2 (input pole capactor C1, feedback capactor C2), k_c > 4 * qp ** 2 * (1 + a0)
             c2: capacitance value of feedback capacitor C2
             use_a: whether to use solution a or b of the quadratic equation for input resistor R1
     """
     k_r2 = a0
     d = 4 * qp ** 2 * (1 + k_r2)
     if k_c < d:
-        raise ValueError("No real solutions k_C < D!")
+        raise ValueError("No real solutions k_C < D! Increase k_C!")
 
     r1_a = (1 + np.sqrt(1 - d / k_c)) / (2 * k_r2 * qp * wp * c2)
     r1_b = (1 - np.sqrt(1 - d / k_c)) / (2 * k_r2 * qp * wp * c2)
@@ -294,11 +302,12 @@ def main():
         # raise ValueError("Design does not fit in available area!")
 
     print("Noise Calculations: System")
-    f_int_min = 10e3
+    f_int_min = 100
+
     f_int_max = f_stop
     temp = 300
     k_b = 1.38e-23
-    res = adc_noise_spec(nbits=4, noise_margin_db=18, fmin=f_int_min, fmax=f_int_max)
+    res = adc_noise_spec(nbits=8, noise_margin_db=10, fmin=f_int_min, fmax=f_int_max)
     vn_o_density = res['vno_density']
     Req = vn_o_density**2/(4*k_b*temp)
 
@@ -309,9 +318,9 @@ def main():
     print("Vno_amp/sqrt(f) = %.2f" % (vn_amp_density_min / 1e-9), "nV/sqrt(Hz)")
 
     print("Gain Accuracy:")
-    beta = 1/a_pass
+    beta = 1/(1+a_pass)
     vlsb = res['vlsb']
-    vref = 0.9
+    vref = 1.024
     err_gain = vlsb/vref
     a_dc_min = 1/beta*(1/err_gain - 1)
     a_dc_min_db = 20*np.log10(a_dc_min)
