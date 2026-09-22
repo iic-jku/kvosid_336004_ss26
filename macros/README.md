@@ -1,0 +1,124 @@
+# Macros
+
+Every folder here is one macro with its own `Makefile` and `README.md`, following the same conventions (`make help`, `make all`, `make clean`). The macros shipped with the course are the archetypes a new block starts from:
+
+| Macro | Kind | Source of truth | PDK | Flow |
+| --- | --- | --- | --- | --- |
+| [`counter/`](counter/) | digital | SystemVerilog in `rtl/` | `ihp-sg13cmos5l` | Verilator lint, Icarus Verilog and cocotb simulation, LibreLane hardening with DRC and LVS inside the run, XSPICE model for the mixed-signal Xschem simulation, FPGA emulation |
+| [`inverter/`](inverter/) | analog | Xschem schematic and hand-drawn GDS in `layout/` | `ihp-sg13cmos5l` | Xschem testbenches, KLayout and Magic DRC and LVS, Magic PEX, LEF, Liberty and Verilog stub export by Magic, CACE characterization |
+| [`amp_cs/`](amp_cs/) | analog | Xschem schematic and hand-drawn GDS in `layout/` | `ihp-sg13cmos5l` | as `inverter/` |
+| [`filter_sky130/`](filter_sky130/) | analog | Xschem schematic | `sky130A` | Xschem testbenches and CACE characterization, see its `README.md` |
+
+The `Makefile` in this folder has one job: it starts a new macro as a renamed copy of an existing one.
+
+
+## Directory Structure
+
+```text
+📁 macros/
+├─ 📁 amp_cs/                 analog macro, see amp_cs/README.md
+├─ 📁 counter/                digital macro, see counter/README.md
+├─ 📁 filter_sky130/          analog macro (sky130A), see filter_sky130/README.md
+├─ 📁 inverter/               analog macro, see inverter/README.md
+├─ 📁 scripts/
+│  └─ rename_gds_cells.py     renames the cells inside a GDS, used by make macro
+├─ Makefile
+└─ README.md
+```
+
+
+## Makefile Targets
+
+### Show Available Targets
+
+```sh
+make help
+```
+
+
+### PDK Guard
+
+The macros here do not share one PDK: `filter_sky130` needs `sky130A`, the others `ihp-sg13cmos5l`. `REQUIRED_PDK` is therefore **empty by default** and the PDK is not checked. Set it per call to the PDK of the macro you copy:
+
+```sh
+make macro FROM=inverter NAME=amplifier REQUIRED_PDK=ihp-sg13cmos5l
+```
+
+The check is a parse-time conditional at the top of the `Makefile`. With a mismatching `$PDK` it aborts before anything is copied:
+
+```sh
+Makefile:20: *** PDK is "ihp-sg13g2", but the macros need "ihp-sg13cmos5l". Run `sak-pdk ihp-sg13cmos5l` in this shell and retry, or pass REQUIRED_PDK= to skip this check.  Stop.
+```
+
+Switch the PDK with `sak-pdk <pdk>` and retry. Only `help` is exempt from the check.
+
+
+### Start a New Macro from an Existing One
+
+```sh
+make macro FROM=<macro> NAME=<name>
+```
+
+`FROM` is the macro to copy, `inverter` or `amp_cs` for an analog block, `counter` for a digital one, or any macro of your own that is already here. `NAME` is the name of the new macro: a lowercase letter followed by lowercase letters, digits or underscores, so that it works as a file name, a GDS cell name and a Verilog module name alike. The top cell follows the convention of the copied macro, so `NAME=amp` gives the cells `amp` and `amp_top` from the inverter, and `NAME=fifo` gives the module `fifo_top` from the counter.
+
+The target refuses to run when `NAME` exists already. Otherwise it does, in this order:
+
+1. Copies every file of `FROM` that git knows about, tracked or untracked but not ignored. Outside a git checkout it falls back to copying the whole folder.
+2. Runs `make clean` in the copy, so that the committed build outputs of the copied macro (`final/`, `netlist/`, `render/img/`, the reports) are gone as well.
+3. Renames every file and folder whose name carries `FROM`.
+4. Replaces `FROM` inside every text file, in its three spellings `inverter`, `Inverter` and `INVERTER`. That covers `TOP` in the `Makefile` and in every `fpga/<board>/Makefile`, `DESIGN_NAME` and `VERILOG_FILES` in `flow/librelane/config.yaml`, the symbol instances and the `.include` lines in the Xschem testbenches, `name:`, `template:` and `script:` in the CACE yaml, the file names in the plot scripts, the module names and include guards in the RTL, and `lib_name` and `lib_path` in the `.klib` library map.
+5. Renames the cells inside every GDS in `layout/` with [`scripts/rename_gds_cells.py`](scripts/rename_gds_cells.py). The DRC, LVS and PEX targets pass the file name as the cell name, so the two must match. A `.klay.gds` references cells from the libraries that its `.klay.klib` maps to other GDS files, and each link is stored inside the GDS by library name and cell name, where no text edit reaches it. The script processes the files in dependency order, libraries before the layouts that use them, and relinks every reference to the renamed cell of the renamed library. It runs without the PDK, so the PCells stay frozen exactly as the source saved them instead of being re-evaluated against the installed PDK. The geometry does not change.
+6. Lists what still carries the old name. Markdown files and notebooks are left alone on purpose, they describe the copied design rather than reference it, and a blind rename would turn their prose into nonsense. Anything else in that list is something the target could not know about.
+
+The copy is a complete macro that builds as one: `make all` in the new folder passes exactly as it does in the source, because nothing but names has changed. So the copy is the moment to commit, before the real work starts.
+
+For a new analog macro named `amp` and a new digital macro named `fifo`:
+
+```sh
+cd macros
+make macro FROM=inverter NAME=amp
+make macro FROM=counter NAME=fifo
+```
+
+> [!NOTE]
+> The target runs in the IIC-OSIC-TOOLS container: it needs GNU `find`, `grep`, `sed` and `xargs`, and `klayout` for the GDS step.
+
+> [!NOTE]
+> The repository `.gitignore` does not list the build outputs of the macros. Step 1 therefore copies whatever build outputs are lying around in `FROM`, and step 2 removes them again with `make clean`. Run `make clean` in `FROM` first if you want the copy to be quick.
+
+
+### What Is Left to Do
+
+The new macro still implements the copied design under its new name. What follows is the work the target cannot do.
+
+#### From an Analog Macro (`inverter`, `amp_cs`, `filter_sky130`)
+
+1. Replace the design: the schematics and symbols in `schematic/xschem/`, the layout sources `layout/<NAME>.gds` and `layout/<NAME>_top.klay.gds`, and the export `layout/<NAME>_top.gds`. Keep the box on the `prBoundary` layer (`189/0`) around the top cell and resize it with the macro, `make check-boundary` verifies it.
+2. Rewrite the testbenches in `testbenches/xschem/` and the plot scripts in `testbenches/xschem/plot_simulations/` for the new pins and measurements. `make symbol-pex` rebuilds `<CELL>_pex.sym` from the cell symbol, so only the cell symbol needs drawing.
+3. Adapt the CACE datasheet `verification/cace/<NAME>.yaml` with its template and script, or delete the CACE folder together with the `sim-cace` line of `sim-all`.
+4. The sizing notebook and the figures in `scripts/sizing/` are specific to the copied design, adapt or delete them.
+5. Rewrite `README.md`.
+
+#### From the Counter (Digital)
+
+1. Replace the RTL in `rtl/` and adjust `MODULES_SYNTH` and `MODULES_SIM` in the `Makefile` when you add or drop files. `rtl/constants.sv` keeps its name, its macros were renamed with the rest.
+2. When the ports change, delete both symbols in `schematic/xschem/` instead of editing them. An edited copy of the counter symbol looks plausible, but `make symbol-check` rejects every pin that no longer matches a port. Harden once, scaffold the symbol from the ports of the hardened design, arrange it, and only then run the full flow:
+
+    ```sh
+    make librelane        # harden the new design
+    make copy-netlist     # brings netlist/pnl/<TOP>.pnl.v into the tree
+    make symbol-gl        # scaffold schematic/xschem/<TOP>.sym from its ports
+    xschem schematic/xschem/<TOP>.sym   # rename pins to house style, arrange, draw the body
+    make all
+    ```
+
+    The symbol has to exist before `generate-xspice` runs, so a `make all` on a macro that has none stops there and says so. Wire the Xschem testbench to the finished symbol afterwards, because its pins are what the testbench connects to by coordinate. See [Build the Xschem Symbol](counter/README.md#build-the-xschem-symbol).
+3. Update `CLOCK_PORT` and `DIE_AREA` in `flow/librelane/config.yaml`, the pin placement in `flow/librelane/pin_order.cfg`, and the constraints in `impl.sdc` and `signoff.sdc`.
+4. Rewrite the testbenches in `testbenches/verilog/`, `testbenches/cocotb/` and `testbenches/xschem/`, and the plot script in `testbenches/xschem/plot_simulations/`.
+5. Update `DUT_SRCS` in `fpga/dut.mk` and the pin constraint file in each `fpga/<board>/` you care about to the ports of the new design. Delete the board folders you do not need, the dispatcher derives its board list from the folders that are there.
+6. Rewrite `README.md` and `fpga/README.md`.
+
+
+### Using the Macro in a Chip
+
+This repository holds course material, not a chip: there is no top-level `Makefile`, `rtl/` or `flow/` to register a new macro in. To tape the macro out, copy it into the [`ihp-sg13cmos5l-ams-chip-template`](https://github.com/iic-jku/ihp-sg13cmos5l-ams-chip-template) and follow the *Register the Macro at the Chip Top-Level* section of its `macros/README.md`.
