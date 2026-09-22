@@ -5,6 +5,9 @@
 # Description: Design Multiple Feedback Low-pass filter, map to RC, estimate area
 
 # Created: 22.02.2024
+
+# Changes:
+#           22.09.2026: Cleanup, suppress warnings from control.matlab
 #
 
 import warnings
@@ -303,7 +306,6 @@ def main():
 
     print("Noise Calculations: System")
     f_int_min = 100
-
     f_int_max = f_stop
     temp = 300
     k_b = 1.38e-23
@@ -311,20 +313,8 @@ def main():
     vn_o_density = res['vno_density']
     Req = vn_o_density**2/(4*k_b*temp)
 
-    vn_amp_density_min = vn_o_density / 2 / (1 + R2 / R1)
-
     print("Vno/sqrt(f) = %.2f" % (vn_o_density/1e-9), "nV/sqrt(Hz)")
     print("Req_noise = %.2f" % (Req / 1e6), "MOhm")
-    print("Vno_amp/sqrt(f) = %.2f" % (vn_amp_density_min / 1e-9), "nV/sqrt(Hz)")
-
-    print("Gain Accuracy:")
-    beta = 1/(1+a_pass)
-    vlsb = res['vlsb']
-    vref = 1.024
-    err_gain = vlsb/vref
-    a_dc_min = 1/beta*(1/err_gain - 1)
-    a_dc_min_db = 20*np.log10(a_dc_min)
-    print("Adc_min_amp = %.2f" % a_dc_min_db, "dB")
 
 
 if __name__ == '__main__':
