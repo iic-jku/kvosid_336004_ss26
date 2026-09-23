@@ -6,6 +6,7 @@
 *.save
 *.spectre
 .vacaskrc.toml
+macros/amp_cs/verification/chipifiy/out/*
 
 # editor settings
 .vscode/

@@ -1,0 +1,23 @@
+{
+  "num_cores": null,
+  "simulator_engine": "ngspice",
+  "sim_timeout_sec": 10,
+  "vacask_binary": "vacask",
+  "vacask_netlist_source": "xschem",
+  "ng2vc_binary": "",
+  "vacask_pdk_dir": "/foss/pdks/ihp-sg13g2/libs.tech/vacask",
+  "process_start_method": "auto",
+  "chunk_size": "auto",
+  "live_plotting_enabled": false,
+  "live_plot_throttle_ms": 1500,
+  "live_plot_emit_stride": 1,
+  "custom_equations": [],
+  "transient_equations": [],
+  "multiplot_config": [],
+  "theme": "light",
+  "font_size": 20,
+  "in_dir": "",
+  "out_dir": "",
+  "work_dir": "",
+  "tb_dir": "../../testbenches/xschem"
+}
