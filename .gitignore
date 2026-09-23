@@ -4,3 +4,5 @@
 *.ext
 *.spice
 *.save
+*.spectre
+.vacaskrc.toml
