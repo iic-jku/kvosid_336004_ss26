@@ -3,13 +3,13 @@
 # SPDX-License-Identifier: Apache-2.0 WITH SHL-2.1
 # Description: Evaluate the lna_inv VACASK benches, the postprocess both benches run
 
-"""Read the raws of lna_inv_tb_sp and lna_inv_tb_hb, report and plot what they measured.
+"""Read the raws of lna_inv_tb_sp, lna_inv_tb_hb and lna_inv_tb_blocker, report and plot what they measured.
 
     python3 scripts/lna_inv_post.py            # print the table
     python3 scripts/lna_inv_post.py --plot     # and open the plot windows
     python3 scripts/lna_inv_post.py --write    # splice doc/lna_inv_feasibility.md, write doc/lna_inv_results.json
 
-Both benches end their control block with this script as the VACASK postprocess.
+Every bench ends its control block with this script as the VACASK postprocess.
 The bench load resistor stands in for the stage after the LNA, so NF is quoted
 with its noise removed and once with it in.
 """
@@ -30,8 +30,10 @@ JSON = os.path.join(MACRO, "doc", TOP + "_results.json")
 
 F0 = 2.44e9
 F1 = 2.441e9
+FB = 2.40e9                   # the blocker bench's blocker
 RS = 50.0
 RL = 200.0
+KT = 1.380649e-23 * 300.15    # every bench runs at temp=27
 
 
 def dbm_avail(ampl):
@@ -159,8 +161,44 @@ def first_below(pts, y):
     return None
 
 
+def nf_ssb_db(p, i=None, f=F0):
+    """Single-sideband noise figure at output frequency f from a noise or hbnoise result, bench load excluded.
+
+    The denominator is 4kT RS gain, the source noise that reaches the output from the
+    signal frequency alone. Under a blocker the folded n(rs) also carries source noise
+    converted from the other sidebands, and dividing by it would hide that degradation.
+    """
+    get = (lambda n: p[n]) if i is None else (lambda n: p[i, n])
+    k = np.argmin(abs(np.real(get("frequency")) - (f if i is None else f - FB)))
+    tot, rl, g = (float(np.real(get(n)[k])) for n in ("onoise", "n(rl)", "gain"))
+    return 10 * math.log10((tot - rl) / (4 * KT * RS * g))
+
+
+def blocker(raw):
+    """Wanted-tone gain and noise figure under the 2.40 GHz blocker, from the lna_inv_tb_blocker raws.
+
+    The bench runs RFMODE=0 like the HB bench, so the unblocked numbers are the plain
+    model's, and the change with the blocker is what to read.
+    """
+    out = {}
+    ac0, nz0 = raw("ac0"), raw("nz0")
+    bac, bnz = raw("bac", sweeps=1), raw("bnz", sweeps=1)
+    if ac0 is not None and bac is not None:
+        g0 = abs(ac0["vout"][0])
+        pts = [[dbm_avail(float(np.real(bac.sweepData(i)["pb"]))),
+                float(20 * np.log10(abs(bac[i, "vout;1"][0]) / g0))] for i in range(bac.sweepGroups)]
+        out["blocker_gain_db"] = pts
+        out["blocker_1db_dbm"] = first_below(pts, -1.0)
+    if nz0 is not None:
+        out["nf_rfmode0_db"] = nf_ssb_db(nz0)
+    if bnz is not None:
+        out["blocker_nf_db"] = [[dbm_avail(float(np.real(bnz.sweepData(i)["pbn"]))), nf_ssb_db(bnz, i)]
+                                for i in range(bnz.sweepGroups)]
+    return out
+
+
 def measure(raw):
-    return dict({"top": TOP}, **small_signal(raw), **large_signal(raw))
+    return dict({"top": TOP}, **small_signal(raw), **large_signal(raw), **blocker(raw))
 
 
 def _dbv(x, floor=1e-15):
@@ -219,7 +257,7 @@ def _grid(plt, panels, title, ncols=2):
 
 
 def plots(raw, outdir=None, show=False):
-    """Draw what the benches measured, grouped into four windows.
+    """Draw what the benches measured, grouped into five windows.
 
     show=True opens the windows and blocks until they are closed.
     outdir writes a PNG per window. Both together do both.
@@ -452,6 +490,32 @@ def plots(raw, outdir=None, show=False):
     if panels:
         save(_grid(plt, panels, "%s: intermodulation" % TOP), "twotone")
 
+    # ---- window 5: the wanted tone under the blocker ---------------------
+    b = blocker(raw)
+    xlab = "blocker at %.2f GHz, available power (dBm)" % (FB / 1e9)
+    panels = []
+    if "blocker_gain_db" in b:
+        def p_desense(ax):
+            x, y = zip(*b["blocker_gain_db"])
+            ax.plot(x, y, "o-")
+            ax.axhline(-1.0, color="0.6", ls=":", lw=1, label="-1 dB")
+            ax.set(xlabel=xlab, ylabel="wanted gain change (dB)",
+                   title="gain at %.2f GHz (hbac)" % (F0 / 1e9))
+            ax.legend(fontsize=8)
+        panels.append(p_desense)
+    if "blocker_nf_db" in b:
+        def p_bnf(ax):
+            x, y = zip(*b["blocker_nf_db"])
+            ax.plot(x, y, "o-", label="under the blocker (hbnoise)")
+            if "nf_rfmode0_db" in b:
+                ax.axhline(b["nf_rfmode0_db"], color="0.6", ls=":", lw=1, label="no blocker (noise)")
+            ax.set(xlabel=xlab, ylabel="SSB noise figure (dB)",
+                   title="noise figure at %.2f GHz, RFMODE=0" % (F0 / 1e9))
+            ax.legend(fontsize=8)
+        panels.append(p_bnf)
+    if panels:
+        save(_grid(plt, panels, "%s: under a blocker" % TOP), "blocker")
+
     for path in written:
         print("  wrote %s" % path)
     if windows:
@@ -483,6 +547,15 @@ def report(r):
         ("IIP3, two tones at -30 dBm", val("iip3_dbm_30", "%.1f dBm")),
         ("supply current", val("idd_ma", "%.2f mA at 1.2 V")),
     ]
+    if "blocker_gain_db" in r:
+        x = r["blocker_1db_dbm"]
+        rows.append(("2.40 GHz blocker that costs the wanted tone 1 dB (hbac, RFMODE=0)",
+                     "not reached" if x is None else "%.1f dBm" % x))
+    if "blocker_nf_db" in r and "nf_rfmode0_db" in r:
+        nf = {round(x): y for x, y in r["blocker_nf_db"]}
+        rows.append(("noise figure under a 2.40 GHz blocker (hbnoise, RFMODE=0)",
+                     "%.2f dB without, %.2f dB at -10 dBm, %.2f dB at 0 dBm"
+                     % (r["nf_rfmode0_db"], nf.get(-10, float("nan")), nf.get(0, float("nan")))))
     L = ["| | measured |", "|---|---|"]
     L += ["| %s | %s |" % row for row in rows]
     if "noise_shares_pct" in r:

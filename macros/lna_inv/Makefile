@@ -477,11 +477,18 @@ measure: ## Read the raws of both benches and write doc/$(TOP)_feasibility.md
 	python3 $(SCRIPTS_DIR)/lna_inv_post.py --write
 .PHONY: measure
 
-sim-all: sizing ## Size, run the small-signal and HB benches, write the report
+# The blocker bench runs hbnoise, which needs VACASK from hpretl/iic-osic-tools:2026.09 or later.
+sim-all: sizing ## Size, run the small-signal, HB and blocker benches, write the report
 	$(MAKE) sim-vacask VTB=lna_inv_tb_sp
 	$(MAKE) sim-vacask VTB=lna_inv_tb_hb
+	$(MAKE) sim-vacask VTB=lna_inv_tb_blocker
 	$(MAKE) measure
 .PHONY: sim-all
+
+hbcheck: ## Check the blocker bench's hbac and hbnoise against ac, noise and transient runs, write doc/lna_inv_hbcheck.md
+	$(MAKE) sim-vacask VTB=lna_inv_tb_blocker
+	PDK=$(VACASK_PDK) python3 $(SCRIPTS_DIR)/lna_inv_hbcheck.py --write
+.PHONY: hbcheck
 
 # The sweep runs vacask itself, so the PDK is pinned here the same way run-vacask pins it.
 sweep: ## Re-size at several currents and loads, measure each in VACASK, write doc/lna_inv_sweep.md
