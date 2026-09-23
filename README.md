@@ -15,6 +15,10 @@ Course material for course 336.004 (KV Open Source IC Design) at the JKU Linz in
 * Folder `macros`:
     - `inverter`: analog reference macro
     - `counter`: digital reference macro
-    - `filter_sky130`: example filter macro (use `sak-pdk sky130A`)
+    - `amp_cs`: common-source amplifier macro
+    - `filter_sky130`: filter macro, SS26 filter under `ihp-sg13cmos5l` and a
+      legacy SKY130 amplifier under `sky130A`, see its `README.md`
+    - `make macro FROM=<macro> NAME=<name>` starts a new macro as a renamed
+      copy of an existing one, see [macros/README.md](macros/README.md)
 * Moodle:
     - Project documentation (PDF)

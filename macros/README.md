@@ -7,7 +7,7 @@ Every folder here is one macro with its own `Makefile` and `README.md`, followin
 | [`counter/`](counter/) | digital | SystemVerilog in `rtl/` | `ihp-sg13cmos5l` | Verilator lint, Icarus Verilog and cocotb simulation, LibreLane hardening with DRC and LVS inside the run, XSPICE model for the mixed-signal Xschem simulation, FPGA emulation |
 | [`inverter/`](inverter/) | analog | Xschem schematic and hand-drawn GDS in `layout/` | `ihp-sg13cmos5l` | Xschem testbenches, KLayout and Magic DRC and LVS, Magic PEX, LEF, Liberty and Verilog stub export by Magic, CACE characterization |
 | [`amp_cs/`](amp_cs/) | analog | Xschem schematic and hand-drawn GDS in `layout/` | `ihp-sg13cmos5l` | as `inverter/` |
-| [`filter_sky130/`](filter_sky130/) | analog | Xschem schematic | `sky130A` | Xschem testbenches and CACE characterization, see its `README.md` |
+| [`filter_sky130/`](filter_sky130/) | analog | Xschem schematic | mixed | SS26 filter (behavioural OTA) under `ihp-sg13cmos5l`, legacy SKY130 amplifier under `sky130A`; Xschem testbenches and CACE, no layout yet, see its `README.md` |
 
 The `Makefile` in this folder has one job: it starts a new macro as a renamed copy of an existing one.
 
@@ -18,7 +18,7 @@ The `Makefile` in this folder has one job: it starts a new macro as a renamed co
 📁 macros/
 ├─ 📁 amp_cs/                 analog macro, see amp_cs/README.md
 ├─ 📁 counter/                digital macro, see counter/README.md
-├─ 📁 filter_sky130/          analog macro (sky130A), see filter_sky130/README.md
+├─ 📁 filter_sky130/          analog macro (mixed PDK), see filter_sky130/README.md
 ├─ 📁 inverter/               analog macro, see inverter/README.md
 ├─ 📁 scripts/
 │  └─ rename_gds_cells.py     renames the cells inside a GDS, used by make macro
@@ -38,7 +38,7 @@ make help
 
 ### PDK Guard
 
-The macros here do not share one PDK: `filter_sky130` needs `sky130A`, the others `ihp-sg13cmos5l`. `REQUIRED_PDK` is therefore **empty by default** and the PDK is not checked. Set it per call to the PDK of the macro you copy:
+The macros here do not share one PDK: `filter_sky130` mixes `ihp-sg13cmos5l` and `sky130A`, the others are `ihp-sg13cmos5l`. `REQUIRED_PDK` is therefore **empty by default** and the PDK is not checked. Set it per call to the PDK of the macro you copy:
 
 ```sh
 make macro FROM=inverter NAME=amplifier REQUIRED_PDK=ihp-sg13cmos5l

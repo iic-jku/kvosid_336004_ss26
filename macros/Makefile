@@ -6,8 +6,9 @@ MAKEFILE_DIR := $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 .DEFAULT_GOAL := help
 
 # PDK Guard
-# The macros here do not share one PDK: filter_sky130 needs sky130A, the others
-# ihp-sg13cmos5l. The check is therefore off by default, set it per call.
+# The macros here do not share one PDK: filter_sky130 mixes ihp-sg13cmos5l (SS26
+# filter) and sky130A (legacy amplifier), the others are ihp-sg13cmos5l. The
+# check is therefore off by default, set it per call.
 # Override with: make <target> REQUIRED_PDK=<pdk>, an empty value skips the check
 REQUIRED_PDK ?=
 
