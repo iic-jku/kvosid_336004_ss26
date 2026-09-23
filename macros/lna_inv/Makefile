@@ -438,7 +438,15 @@ netlist-vacask: ## Netlist VTB as VACASK into $(SIM_DIR), audit it (usage: make 
 # benches' bare `include "sg13cmos5l_vacask_common.lib"` only resolves when the
 # rc sits beside the netlist and vacask is started there. run-vacask is the one
 # place that arranges both, for the Makefile and for the xschem launcher alike.
-VACASK_RC := $(PDK_ROOT)/$(PDK)/libs.tech/vacask/.vacaskrc.toml
+#
+# This macro is SG13CMOS5L only, and the PDK's own rc file carries $(PDK_ROOT)
+# and $(PDK) placeholders that VACASK expands at RUN time, so the variable has
+# to be right in the environment of the vacask process. The testbench xschemrc
+# pins it for the GUI, since xschem passes its environment to the vacask it
+# spawns, but a plain make in a shell where sak-pdk was never run would leave
+# ihp-sg13g2 and resolve the models against the wrong tree.
+VACASK_PDK ?= ihp-sg13cmos5l
+VACASK_RC  := $(PDK_ROOT)/$(VACASK_PDK)/libs.tech/vacask/.vacaskrc.toml
 
 run-vacask: ## Run an already netlisted VTB in VACASK (usage: make run-vacask [VTB=<bench>])
 	@test -s $(SIM_DIR)/$(VTB).spectre || { \
@@ -446,13 +454,15 @@ run-vacask: ## Run an already netlisted VTB in VACASK (usage: make run-vacask [V
 		echo "or netlist from xschem with netlist_type spectre"; exit 1; }
 	@test -f $(VACASK_RC) || { \
 		echo "$(VACASK_RC) not found."; \
-		echo "PDK is \"$(PDK)\"; the VACASK collateral ships with ihp-sg13cmos5l."; \
-		echo "Run 'sak-pdk ihp-sg13cmos5l' in this shell and retry."; exit 1; }
+		echo "This macro needs the VACASK collateral of $(VACASK_PDK)."; \
+		echo "Check PDK_ROOT, or override with VACASK_PDK=<pdk>."; exit 1; }
+	@test "$(PDK)" = "$(VACASK_PDK)" || \
+		echo "note: PDK is \"$(PDK)\", running vacask against $(VACASK_PDK)"
 	@# VACASK reads a config from the TOPLEVEL NETLIST directory, whatever the
 	@# current directory is, so the include path is set up there once
 	python3 $(SCRIPTS_DIR)/vacask_rc.py --pdk-rc $(VACASK_RC) --out $(SIM_DIR) \
 		--add $(abspath $(XSCHEM_SCH_DIR))
-	cd $(SIM_DIR) && vacask $(VTB).spectre 2>&1 | tee $(VTB).log
+	cd $(SIM_DIR) && PDK=$(VACASK_PDK) vacask $(VTB).spectre 2>&1 | tee $(VTB).log
 	@# vacask exits 0 when an analysis aborts, so the transcript is the verdict
 	@! grep -qiE 'aborted|failed|error' $(SIM_DIR)/$(VTB).log || { echo "ERROR: see $(SIM_DIR)/$(VTB).log"; exit 1; }
 .PHONY: run-vacask

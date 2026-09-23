@@ -42,6 +42,21 @@ def dbm_avail(ampl):
     return 10 * math.log10(ampl ** 2 / (8 * RS) / 1e-3)
 
 
+def dbm_out(v_peak):
+    """Power a peak voltage delivers into RL, dBm."""
+    return 10 * math.log10(v_peak ** 2 / (2 * RL) / 1e-3)
+
+
+def transducer_gain_db(v_peak, ampl):
+    """Power delivered to RL over power available from the source, dB.
+
+    The earlier form, 20*log10(v/RL / (ampl/2)), is a current over a voltage,
+    so it is a transconductance in dB relative to 1 S and not a gain at all:
+    it reads -32.3 dB where this reads +7.7 dB, for 24.2 mS.
+    """
+    return dbm_out(v_peak) - dbm_avail(ampl)
+
+
 class Macro:
     def __init__(self, path):
         self.dir = os.path.abspath(path)
@@ -117,7 +132,7 @@ def measure(m):
             f = np.real(hb[ii, "frequency"])
             v = abs(hb[ii, "vout"][np.argmin(abs(f - F0))])
             a = float(np.real(hb.sweepData(ii)["pin"]))
-            pts.append((dbm_avail(a), 20 * np.log10(v / RL / (a / 2))))
+            pts.append((dbm_avail(a), transducer_gain_db(v, a)))
         g0 = pts[0][1]
         p1 = None
         for (pa, ga), (pb, gb) in zip(pts, pts[1:]):
@@ -298,7 +313,7 @@ def plots(m, outdir=None, show=False):
             a = float(np.real(hb.sweepData(i)["pin"]))
             fund = v[np.argmin(abs(f - F0))]
             pin_ax.append(dbm_avail(a))
-            gain.append(20 * np.log10(fund / RL / (a / 2)))
+            gain.append(transducer_gain_db(fund, a))
             for k in (1, 2, 3):
                 j2 = np.argmin(abs(f - k * F0))
                 ok = abs(f[j2] - k * F0) < F0 / 2
@@ -310,7 +325,7 @@ def plots(m, outdir=None, show=False):
             ax.plot(pin_ax, gain, "o-")
             ax.axhline(gain[0] - 1.0, color="0.6", ls=":", lw=1, label="-1 dB")
             ax.set(xlabel="available input power (dBm)",
-                   ylabel="transducer gain (dB)", title="gain compression")
+                   ylabel="transducer power gain (dB)", title="gain compression")
             ax.legend(fontsize=8)
 
         def p_abs(ax):
@@ -369,7 +384,7 @@ def plots(m, outdir=None, show=False):
              "hb_raw")
 
     # ---- window 4: the two-tone benches ----------------------------------
-    panels = []
+    panels, tone_pts = [], []
     for name, pin_dbm in (("hb2", -40.0), ("hb3", -30.0)):
         h = m.raw(name)
         if h is None:
@@ -383,15 +398,72 @@ def plots(m, outdir=None, show=False):
             lev = _dbv(v[band])
             floor = 10 * np.floor((lev.min() - 10) / 10)
             ax.stem((f[band] - F0) / 1e6, lev, bottom=floor, basefmt=" ")
-            ax.set_ylim(floor, lev.max() + 15)
+            ax.set_ylim(floor, lev.max() + 28)
             for fx, lab in ((F0, "F0"), (F1, "F1"),
                             (2 * F0 - F1, "2F0-F1"), (2 * F1 - F0, "2F1-F0")):
                 ax.axvline((fx - F0) / 1e6, color="0.6", ls=":", lw=1)
                 ax.annotate(lab, ((fx - F0) / 1e6, ax.get_ylim()[1]), fontsize=7,
                             ha="center", va="top")
+
+            # the number a designer reads off this panel: how far the IM3
+            # products sit below the carrier, and how far the empty bins sit
+            # below the IM3, which is what says the product is real
+            fund = _dbv(v[np.argmin(abs(f - F0))])
+            for fx in (2 * F0 - F1, 2 * F1 - F0):
+                lv = _dbv(v[np.argmin(abs(f - fx))])
+                ax.annotate("%.1f dBc" % (lv - fund), ((fx - F0) / 1e6, lv),
+                            textcoords="offset points", xytext=(0, 7),
+                            ha="center", fontsize=8, color="C3")
+            im3 = _dbv(v[np.argmin(abs(f - (2 * F0 - F1)))])
+            empty = [_dbv(v[k]) for k, fr in enumerate(f)
+                     if band[k] and min(abs(fr - fx) for fx in
+                                        (F0, F1, 2 * F0 - F1, 2 * F1 - F0,
+                                         3 * F0 - 2 * F1, 3 * F1 - 2 * F0)) > 1e3]
+            note = "IM3 %.1f dBV" % im3
+            if empty:
+                note += "\nfloor %.0f dBV, %.0f dB below" % (max(empty), im3 - max(empty))
+            ax.text(0.02, 0.88, note, transform=ax.transAxes, ha="left",
+                    va="top", fontsize=8,
+                    bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="0.7"))
             ax.set(xlabel="offset from F0 (MHz)", ylabel="output (dBV)",
                    title="two tones at %.0f dBm each" % pin_dbm)
         panels.append(p_tt)
+        tone_pts.append((pin_dbm, dbm_out(v[np.argmin(abs(f - F0))]),
+                         dbm_out(v[np.argmin(abs(f - (2 * F0 - F1)))])))
+
+    # the classic IP3 construction: slope 1 through the fundamental, slope 3
+    # through the IM3, and the intercept where the extrapolations meet
+    if len(tone_pts) >= 1:
+        def p_ip3(ax):
+            pin = np.array([q[0] for q in tone_pts])
+            fun = np.array([q[1] for q in tone_pts])
+            im3 = np.array([q[2] for q in tone_pts])
+            iip3 = (im3[0] - fun[0]) / (1 - 3) + pin[0]
+            oip3 = fun[0] + (iip3 - pin[0])
+            x = np.array([pin.min() - 5, iip3 + 3])
+            ax.plot(x, fun[0] + 1 * (x - pin[0]), "--", color="C0", lw=1,
+                    label="slope 1")
+            ax.plot(x, im3[0] + 3 * (x - pin[0]), "--", color="C1", lw=1,
+                    label="slope 3")
+            ax.plot(pin, fun, "o", color="C0", label="fundamental")
+            ax.plot(pin, im3, "s", color="C1", label="IM3")
+            ax.plot([iip3], [oip3], "*", color="k", ms=12)
+            ax.text(0.97, 0.04, "IIP3 %.1f dBm\nOIP3 %.1f dBm" % (iip3, oip3),
+                    transform=ax.transAxes, ha="right", va="bottom", fontsize=9,
+                    bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="0.7"))
+            ax.axvline(iip3, color="0.7", ls=":", lw=1)
+            if len(tone_pts) > 1:
+                sf = (fun[-1] - fun[0]) / (pin[-1] - pin[0])
+                si = (im3[-1] - im3[0]) / (pin[-1] - pin[0])
+                ax.set_title("third-order intercept (measured slopes %.2f and %.2f)"
+                             % (sf, si))
+            else:
+                ax.set_title("third-order intercept")
+            ax.set(xlabel="available input power per tone (dBm)",
+                   ylabel="output power (dBm)")
+            ax.legend(fontsize=7, loc="upper left")
+        panels.append(p_ip3)
+
     if panels:
         save(_grid(plt, panels, "%s: intermodulation" % m.top), "twotone")
 
