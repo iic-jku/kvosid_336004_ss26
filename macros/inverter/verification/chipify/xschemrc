@@ -1,0 +1,31 @@
+# xschem runs with the chipify project root as its working directory, so this
+# is the rc file chipify reads. A tb/xschemrc is staged into the scratch dir
+# and never sourced.
+
+# Set default PDK_ROOT
+if { ![info exists env(PDK_ROOT)] } {
+  puts stderr "Warning: PDK_ROOT env. var. not found or empty"
+  if {[file isdir /foss/pdks]} { set ::env(PDK_ROOT) /foss/pdks }
+}
+
+# This macro is an SG13CMOS5L design, so pin the PDK rather than inherit
+# whatever sak-pdk last selected.
+if { [info exists env(PDK)] && $env(PDK) ne {ihp-sg13cmos5l} } {
+  puts stderr "note: this macro needs ihp-sg13cmos5l, switching from $env(PDK)"
+}
+set ::env(PDK) ihp-sg13cmos5l
+
+source $env(PDK_ROOT)/$env(PDK)/libs.tech/xschem/xschemrc
+
+# The DUT symbol and its schematic live in the macro, two levels up.
+if {![info exists ::XSCHEM_LIBRARY_PATH]} { set ::XSCHEM_LIBRARY_PATH {} }
+foreach d {../../schematic/xschem tb} {
+  set p [file normalize [file join [file dirname [info script]] $d]]
+  if {[lsearch -exact [split $::XSCHEM_LIBRARY_PATH :] $p] < 0} {
+    if {$::XSCHEM_LIBRARY_PATH eq ""} {
+      set ::XSCHEM_LIBRARY_PATH $p
+    } else {
+      append ::XSCHEM_LIBRARY_PATH :$p
+    }
+  }
+}

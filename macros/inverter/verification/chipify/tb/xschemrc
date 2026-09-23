@@ -1,0 +1,8 @@
+# xschem reads its rc from the current directory, so opening this bench
+# directly from tb/ needs one here, otherwise the DUT symbol does not resolve
+# and the instance is dropped from the netlist without a warning.
+#
+# chipify never reads this file: it runs xschem with the project root as the
+# working directory, where the real xschemrc lives. Sourcing that one keeps the
+# two paths identical instead of duplicating the library setup.
+source [file normalize [file join [file dirname [info script]] ../xschemrc]]
