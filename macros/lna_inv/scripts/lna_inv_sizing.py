@@ -8,17 +8,16 @@
 Topology: an NMOS and a PMOS sharing gate and drain, so both transconductances
 act on the same current, with a feedback resistor from drain to gate that
 sets the input impedance and biases the pair at its own trip point. No coil
-anywhere: the input is broadband, which the level plan can live with since
-the tuned LNA measured no selectivity either, and the antenna pad carries the
-same shared-pad capacitance and off-chip shunt coil, vendored below.
+on chip, so the input is broadband. The antenna pad's capacitance and its
+off-chip shunt coil are modelled below.
 
 The match depends on the load, which is the point to remember: with a load
 RL at the drain and the pair's output resistance ro,
 
     Rin = (Rf + RL') / (1 + gm RL'),   RL' = RL || ro
 
-so Rf is solved for 50 ohm against the bench's 200 ohm stand-in, and the real
-mixer will read differently. The bench decides the noise, the estimate below
+so Rf is solved for 50 ohm against the bench's 200 ohm stand-in, and a real
+load will read differently. The bench decides the noise, the estimate below
 only ranks: 1 + RS/Rf + gamma_eff/(gm RS).
 
     python3 lna_inv_sizing.py            # print
@@ -32,20 +31,11 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 MACRO = os.path.dirname(HERE)
-ROOT = os.path.dirname(os.path.dirname(MACRO))
 sys.path.insert(0, HERE)
 
 import gmid_lut                      # noqa: E402
 
-# The receiver level plan is not part of this repo. Without it the sizing still
-# runs, only the target line is dropped.
-try:
-    import rx_level_plan as LP       # noqa: E402
-except ImportError:
-    LP = None
-
-# Antenna pad and off-chip shunt coil, vendored from the common-source LNA so
-# that this macro stands on its own.
+# Antenna pad and off-chip shunt coil, assumed, not sized here
 C_PAD = 471e-15          # shared antenna pad capacitance
 Q_LSH = 50.0             # wirewound 0402 shunt coil, Q at 2.44 GHz
 C_RES = 100e-15          # residual the coil leaves, used as a matching element
@@ -150,7 +140,7 @@ def inc_text(d):
 
 
 def sweep_points():
-    """What scripts/lna_sweep.py runs: the current, and the load the match is solved against."""
+    """What scripts/lna_inv_sweep.py runs: the current, and the load the match is solved against."""
     return [dict(id_a=i, rl=rl) for i in (1.5e-3, 2.5e-3, 4.0e-3, 6.0e-3, 8.0e-3) for rl in (RL_BENCH, 100.0)]
 
 
@@ -161,11 +151,11 @@ def sweep_columns(d):
 
 
 def robust_points():
-    """What scripts/lna_sweep.py --points robust runs: the nominal design with one thing moved at a time.
+    """What scripts/lna_inv_sweep.py --points robust runs: the nominal design with one thing moved at a time.
 
-    The inverter has no bias knob, so where the common source moves its
-    reference current this moves the device width, which is what the current
-    follows. CD is the mixer-side parasitic at the drain, zero in the nominal
+    The inverter has no bias knob, so this moves the device width, which is
+    what the current follows.
+    CD is the mixer-side parasitic at the drain, zero in the nominal
     bench, so only the upward side of it means anything.
     """
     cases = [("nominal", {}),
@@ -221,11 +211,6 @@ def patch_cace(d):
         fh.write(text[:i] + cace_conditions(d) + text[j:])
 
 
-def _st():
-    """The level plan's first state set, when the plan is available."""
-    return dict(zip(("name", "gain", "nf", "iip3"), LP.STATE_SETS["one"][0]))
-
-
 def report(d):
     return "\n".join([
         "pair at the trip point %.2f V: NMOS %.1f um at gm/Id %.1f, PMOS %.1f um at gm/Id %.1f, %.2f mA, gm %.1f mS, ro %.0f ohm"
@@ -234,10 +219,7 @@ def report(d):
         % (d["rf"], d["rl"], 20 * math.log10(abs(d["av"])), d["gm_eff"] * 1e3, d["cin"] * 1e15, d["gamma"]),
         "shared antenna pad %.0f fF, shunt coil %.2f nH (%.2f ohm) off chip" % (d["cpad"] * 1e15, d["lsh"] * 1e9, d["rlsh"]),
         "NF estimate %.2f dB, 1 + RS/Rf is %.2f dB of it" % (d["nf_est"], 10 * math.log10(1 + RS / d["rf"])),
-    ] + ([] if LP is None else [
-        "Level plan asks: LNA NF %.1f dB, gain %+.0f dB, IIP3 %.1f dBm, P1dB %.1f dBm."
-        % (_st()["nf"], _st()["gain"], _st()["iip3"], _st()["iip3"] - LP.P1DB_BELOW_IIP3),
-    ]))
+    ])
 
 
 def selftest():

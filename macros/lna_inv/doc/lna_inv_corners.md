@@ -21,12 +21,12 @@ Small signal only: supply current, S11 from the ac input impedance, transconduct
 
 Full table, all 45 points: [`../verification/cace/results/lna_inv/corners.md`](../verification/cace/results/lna_inv/corners.md).
 
-| | nominal, `tt` 1.20 V 27 C | worst | at | asked |
+| | nominal, `tt` 1.20 V 27 C | worst | at | note |
 |---|---|---|---|---|
-| noise figure | 4.39 dB | **7.82 dB** | `ss`, 1.08 V, -40 C | 2.5 dB, missed at every point |
-| S11 at 2.44 GHz | -25.96 dB | **-8.21 dB** | `ss`, 1.08 V, -40 C | < -10 dB, missed at 1 of 45 |
-| transconductance | 17.93 mS | **7.80 mS** | `ss`, 1.08 V, -40 C | frame set by the chain |
-| supply current | 3.63 mA | **12.53 mA** | `ff`, 1.32 V, 125 C | 5.0 mA, and 0.32 mA at the other end |
+| noise figure | 4.39 dB | **7.82 dB** | `ss`, 1.08 V, -40 C | |
+| S11 at 2.44 GHz | -25.96 dB | **-8.21 dB** | `ss`, 1.08 V, -40 C | the only point of 45 above -10 dB |
+| transconductance | 17.93 mS | **7.80 mS** | `ss`, 1.08 V, -40 C | |
+| supply current | 3.63 mA | **12.53 mA** | `ff`, 1.32 V, 125 C | 0.32 mA at the other end |
 | IIP3, P1dB | +5.3, -9.1 dBm at TT | not in the set | | harmonic balance only |
 
 The `tt`, 1.20 V, 27 C point of the corner set reads 4.39 dB, -25.96 dB, 17.93 mS and 3.63 mA against the VACASK bench's 4.36 dB, -28.0 dB, 18.2 mS and 3.63 mA, so the two decks agree on the nominal device to within the S11 null's own sharpness.
@@ -39,4 +39,4 @@ Nothing there moves the block far: NF spans 4.14 to 4.70 dB, S11 stays below -19
 
 ## What the numbers say
 
-**The spread is the current, and nothing in this topology holds it.** The pair sits wherever the trip point lands, so the current is a threshold-and-supply function with no feedback around it: 0.32 mA at `ss`, 1.08 V, -40 C against 12.53 mA at `ff`, 1.32 V, 125 C, a factor of 39, and 3.9x from the supply alone at fixed process and temperature. Everything else tracks it monotonically: the starved corner is the same one that puts noise figure at 7.82 dB and the match at -8.21 dB, the only point of 45 that misses -10 dB, while the rich corner buys 3.87 dB of noise figure for 12.5 mA. The part and parasitic spread, by contrast, is a non-issue, which says the design is not fragile, it is unregulated. That is the item to close before this candidate is comparable to the common source on anything but area: the block needs its current set rather than inherited, and until it is, the numbers to carry into the level plan are the corner column and not the TT one.
+**The spread is the current, and nothing in this topology holds it.** The pair sits wherever the trip point lands, so the current is a threshold-and-supply function with no feedback around it: 0.32 mA at `ss`, 1.08 V, -40 C against 12.53 mA at `ff`, 1.32 V, 125 C, a factor of 39, and 3.9x from the supply alone at fixed process and temperature. Everything else tracks it monotonically: the starved corner is the same one that puts noise figure at 7.82 dB and the match at -8.21 dB, the only point of 45 that misses -10 dB, while the rich corner buys 3.87 dB of noise figure for 12.5 mA. The part and parasitic spread, by contrast, is a non-issue, which says the design is not fragile, it is unregulated. That is the item to close: the block needs its current set rather than inherited, and until it is, quote the corner column and not the TT one.

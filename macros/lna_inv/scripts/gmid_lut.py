@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-FileCopyrightText: 2026 Michael Koefinger, Johannes Kepler University
 # SPDX-License-Identifier: Apache-2.0 WITH SHL-2.1
-# Description: gm/Id lookups on the SG13 LV MOS tables, shared by the RF front-end macros
+# Description: gm/Id lookups on the SG13 LV MOS tables
 
 """gm/Id sizing on the pygmid tables the container ships.
 

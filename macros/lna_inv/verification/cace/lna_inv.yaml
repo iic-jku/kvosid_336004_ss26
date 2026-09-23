@@ -9,8 +9,7 @@
 # VACASK benches use.
 #
 # One parameter set. The pair self-biases at its own trip point through RF,
-# so there is no bias node to drive and no second bias variant to compare,
-# where the common source has a fixed gate voltage and a replica mirror.
+# so there is no bias node to drive and no second bias variant to compare.
 
 name:           lna_inv
 description:    Coil-free resistive-feedback inverter LNTA
@@ -171,7 +170,7 @@ parameters:
           value: any
       nf_db:
         display: Noise figure at 2.44 GHz
-        description: From the input-referred noise against the 50 ohm source, bench load noiseless. The level plan asks 2.5 dB
+        description: From the input-referred noise against the 50 ohm source, bench load noiseless
         unit: dB
         minimum:
           value: any

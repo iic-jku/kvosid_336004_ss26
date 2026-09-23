@@ -7,8 +7,8 @@ F {}
 E {}
 T {Testbench for harmonic balance analysis - LNA (VACASK)} 550 -1690 0 0 1 1 {}
 T {Netlist type must be spectre, xschem's VACASK format. Port 1 is the 50 ohm antenna,
-port 2 the RF-frequency load the mixer presents, RBB per side through the switches.
-lna_inv_sizes.inc comes from scripts/lna_inv_sizing.py; make run-vacask puts schematic/xschem on VACASK's include path, so the bare name resolves.
+port 2 the 200 ohm load that stands in for the next stage.
+lna_inv_sizes.inc comes from scripts/lna_inv_sizing.py, and make run-vacask puts schematic/xschem on VACASK's include path, so the bare name resolves.
 RFMODE=0: the PSP RF network makes harmonic balance fail on a zero pivot, so HB runs the plain model.} 600 -1600 0 0 0.4 0.4 {}
 N 300 -590 370 -590 {lab=vsrc}
 N 300 -530 300 -490 {lab=n_src}
@@ -35,6 +35,8 @@ include \\"lna_inv_sizes.inc\\"
 
 // netlist parameters are not visible inside control, so the analyses carry literals
 control
+  // stop at the first failure: vacask exits 1 and the postprocess never reads partial raws
+  abort always
   options temp=27
   options rawfile=\\"binary\\"
   save full
@@ -59,12 +61,16 @@ control
   alter instance(\\"vin2\\") ampl=20m
   analysis hb3 hb freq=[2.44G, 0.5M] truncate=\\"box\\" nharm=[3, 6]
 
+  // plot once all analyses passed, vacask waits until the windows are closed.
+  // Paths are relative to simulations/, where vacask starts. make runs it with -sp.
+  postprocess(PYTHON, \\"../../../scripts/lna_inv_post.py\\", \\"--plot\\")
+
 endc
 "}
 C {devices/launcher.sym} 1700 -1280 0 0 {name=h2
 descr="netlist + simulate in VACASK"
 tclcommand="
-# the netlist type is what makes this a VACASK netlist; the include path is set
+# the netlist type is what makes this a VACASK netlist, and the include path is set
 # up by sim(spectre,0,cmd) in xschemrc, so plain Netlist/Simulate works too
 xschem set netlist_type spectre
 xschem save
@@ -72,14 +78,14 @@ xschem netlist
 xschem simulate
 "}
 C {devices/launcher.sym} 1700 -1240 0 0 {name=h3
-descr="evaluate the raws (lna_measure.py)"
+descr="replot without simulating (lna_inv_post.py)"
 tclcommand="
 # no braces here: xschem's schematic parser drops the record if the
 # property value contains them
 set macro [file normalize [file join [xschem get current_dirname] .. ..]]
-exec >&@stdout python3 [file join $macro scripts lna_measure.py] --macro $macro --plot &
-"
-C \{devices/title-3.sym}
+exec >&@stdout python3 [file join $macro scripts lna_inv_post.py] --plot &
+"}
+C {devices/title-3.sym} 0 0 0 0 {name=l1 author="Michael Koefinger" rev=0.1 lock=true}
 C {devices/vsource.sym} 300 -560 0 0 {name=vin1 value="type=\\"sine\\" sinedc=0 ampl=2m freq=F0 dc=0 mag=1"}
 C {devices/vsource.sym} 300 -460 0 0 {name=vin2 value="type=\\"sine\\" sinedc=0 ampl=0 freq=F1 dc=0 mag=0"}
 C {devices/gnd.sym} 300 -400 0 0 {name=l2 lab=GND}

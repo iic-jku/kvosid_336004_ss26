@@ -403,7 +403,7 @@ clean: ## Delete all generated files and folders (final, netlists, render, DRC/L
 # ================================================================================================
 
 # ================================================================================================
-# VACASK targets. The spike's benches run in VACASK, netlisted by xschem in its
+# VACASK targets. The benches run in VACASK, netlisted by xschem in its
 # spectre format, with the device sizes coming from the gm/Id script through
 # /lna_inv_sizes.inc so nothing is copied by hand.
 GMID_LUT_DIR ?= /foss/examples/analog-course/gmid
@@ -462,8 +462,9 @@ run-vacask: ## Run an already netlisted VTB in VACASK (usage: make run-vacask [V
 	@# current directory is, so the include path is set up there once
 	python3 $(SCRIPTS_DIR)/vacask_rc.py --pdk-rc $(VACASK_RC) --out $(SIM_DIR) \
 		--add $(abspath $(XSCHEM_SCH_DIR))
-	cd $(SIM_DIR) && PDK=$(VACASK_PDK) vacask $(VTB).spectre 2>&1 | tee $(VTB).log
-	@# vacask exits 0 when an analysis aborts, so the transcript is the verdict
+	@# -sp skips the benches' postprocess, which opens plot windows. make measure evaluates in batch.
+	cd $(SIM_DIR) && PDK=$(VACASK_PDK) vacask -sp $(VTB).spectre 2>&1 | tee $(VTB).log
+	@# tee hides vacask's exit status, so the transcript is the verdict
 	@! grep -qiE 'aborted|failed|error' $(SIM_DIR)/$(VTB).log || { echo "ERROR: see $(SIM_DIR)/$(VTB).log"; exit 1; }
 .PHONY: run-vacask
 
@@ -472,25 +473,25 @@ sim-vacask: ## Netlist and run VTB in VACASK (usage: make sim-vacask [VTB=<bench
 	$(MAKE) run-vacask VTB=$(VTB)
 .PHONY: sim-vacask
 
-measure: ## Read the raws of every bench and write doc/$(TOP)_feasibility.md
-	python3 $(SCRIPTS_DIR)/lna_measure.py --macro . --write
+measure: ## Read the raws of both benches and write doc/$(TOP)_feasibility.md
+	python3 $(SCRIPTS_DIR)/lna_inv_post.py --write
 .PHONY: measure
 
-sim-all: sizing ## Size, run the small-signal, HB and chain benches, score the block
+sim-all: sizing ## Size, run the small-signal and HB benches, write the report
 	$(MAKE) sim-vacask VTB=lna_inv_tb_sp
 	$(MAKE) sim-vacask VTB=lna_inv_tb_hb
-	$(MAKE) sim-vacask VTB=lna_inv_tb_chain
 	$(MAKE) measure
 .PHONY: sim-all
 
-sweep: ## Re-size at several currents, coil Qs and gm/Id, measure each in VACASK, write doc/lna_inv_sweep.md
-	$(MAKE) netlist-vacask
-	python3 $(SCRIPTS_DIR)/lna_sweep.py --macro . --write
+# The sweep runs vacask itself, so the PDK is pinned here the same way run-vacask pins it.
+sweep: ## Re-size at several currents and loads, measure each in VACASK, write doc/lna_inv_sweep.md
+	$(MAKE) netlist-vacask VTB=lna_inv_tb_sp
+	PDK=$(VACASK_PDK) python3 $(SCRIPTS_DIR)/lna_inv_sweep.py --write
 .PHONY: sweep
 
 robust: ## The nominal design with one thing moved at a time (part tolerance, pad, width, feedback R, load node), write doc/lna_inv_robust.md
-	$(MAKE) netlist-vacask
-	python3 $(SCRIPTS_DIR)/lna_sweep.py --macro . --points robust --write
+	$(MAKE) netlist-vacask VTB=lna_inv_tb_sp
+	PDK=$(VACASK_PDK) python3 $(SCRIPTS_DIR)/lna_inv_sweep.py --points robust --write
 .PHONY: robust
 
 # CACE corner characterization, ngspice. The sizes reach the template through

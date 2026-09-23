@@ -7,8 +7,8 @@ F {}
 E {}
 T {Testbench for S-parameter, AC and noise analysis - LNA (VACASK)} 600 -1730 0 0 1 1 {}
 T {Netlist type must be spectre, xschem's VACASK format. Port 1 is the 50 ohm antenna,
-port 2 the RF-frequency load the mixer presents, RBB per side through the switches.
-lna_inv_sizes.inc comes from scripts/lna_inv_sizing.py; make run-vacask puts schematic/xschem on VACASK's include path, so the bare name resolves.} 600 -1690 0 0 0.4 0.4 {}
+port 2 the 200 ohm load that stands in for the next stage.
+lna_inv_sizes.inc comes from scripts/lna_inv_sizing.py, and make run-vacask puts schematic/xschem on VACASK's include path, so the bare name resolves.} 600 -1690 0 0 0.4 0.4 {}
 N 300 -590 370 -590 {lab=vsrc}
 N 300 -530 300 -490 {lab=n_src}
 N 300 -430 300 -400 {lab=GND}
@@ -34,6 +34,8 @@ include \\"lna_inv_sizes.inc\\"
 
 // netlist parameters are not visible inside control, so the analyses carry literals
 control
+  // stop at the first failure: vacask exits 1 and the postprocess never reads partial raws
+  abort always
   options temp=27
   options rawfile=\\"binary\\"
   save full
@@ -43,10 +45,9 @@ control
 
   // S11 at the antenna, S21 into the mixer-side load
   analysis sp1 acsp ports=[\\"vin1\\", \\"rs\\", \\"vop\\", \\"rl\\"] from=2.0G to=3.0G mode=\\"lin\\" points=201
-  // the whole blocker range of the level plan, 30 MHz to 12.75 GHz: what the LNA rejects off band.
-  // 3000 points per decade is 1.9 MHz of grid at the band centre, so the nearest sample to a
-  // 10 MHz offset is that offset and not F0 itself: at 60 per decade the grid is 93 MHz there
-  // and every offset the plan reads below 100 MHz came back as exactly 0 dB by construction.
+  // out of band, 30 MHz to 13 GHz: what the LNA rejects.
+  // 3000 points per decade is 1.9 MHz of grid at the band centre, so a 10 MHz offset gets its
+  // own sample. At 60 per decade the grid is 93 MHz there and small offsets read F0 itself.
   analysis sp2 acsp ports=[\\"vin1\\", \\"rs\\", \\"vop\\", \\"rl\\"] from=30M to=13G mode=\\"dec\\" points=3000
 
   // transconductance: output current in rl against the source, vin1 has mag=1
@@ -55,12 +56,16 @@ control
   // noise figure: onoise over the source resistor's share n(rs)
   analysis n1 noise out=[\\"vout\\"] in=\\"vin1\\" from=2.3G to=2.6G mode=\\"lin\\" points=31
 
+  // plot once all analyses passed, vacask waits until the windows are closed.
+  // Paths are relative to simulations/, where vacask starts. make runs it with -sp.
+  postprocess(PYTHON, \\"../../../scripts/lna_inv_post.py\\", \\"--plot\\")
+
 endc
 "}
 C {devices/launcher.sym} 1700 -1280 0 0 {name=h2
 descr="netlist + simulate in VACASK"
 tclcommand="
-# the netlist type is what makes this a VACASK netlist; the include path is set
+# the netlist type is what makes this a VACASK netlist, and the include path is set
 # up by sim(spectre,0,cmd) in xschemrc, so plain Netlist/Simulate works too
 xschem set netlist_type spectre
 xschem save
@@ -68,13 +73,13 @@ xschem netlist
 xschem simulate
 "}
 C {devices/launcher.sym} 1700 -1240 0 0 {name=h3
-descr="evaluate the raws (lna_measure.py)"
+descr="replot without simulating (lna_inv_post.py)"
 tclcommand="
 # no braces here: xschem's schematic parser drops the record if the
 # property value contains them
 set macro [file normalize [file join [xschem get current_dirname] .. ..]]
-exec >&@stdout python3 [file join $macro scripts lna_measure.py] --macro $macro --plot &
-"
+exec >&@stdout python3 [file join $macro scripts lna_inv_post.py] --plot &
+"}
 C {devices/title-3.sym} 0 0 0 0 {name=l1 author="Michael Koefinger" rev=0.1 lock=true}
 C {devices/vsource.sym} 300 -560 0 0 {name=vin1 value="type=\\"sine\\" sinedc=0 ampl=2m freq=F0 dc=0 mag=1"}
 C {devices/vsource.sym} 300 -460 0 0 {name=vin2 value="type=\\"sine\\" sinedc=0 ampl=0 freq=F1 dc=0 mag=0"}

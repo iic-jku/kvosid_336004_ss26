@@ -53,43 +53,28 @@ def dumps(obj):
     return "\n".join(out) + "\n"
 
 
-def run(a, rc=0):
-    """Hand over to vacask, from the directory holding the netlist."""
-    if not a.run:
-        return rc
-    net = os.path.abspath(a.run)
-    os.chdir(a.out)                 # vacask writes its raws into the current directory
-    os.execvp("vacask", ["vacask", net])
+def write_rc(pdk_rc, out, add=()):
+    """Write out/.vacaskrc.toml, the PDK's config with the directories in add in front of its include path."""
+    if not os.path.isfile(pdk_rc):
+        sys.exit("%s not found: is $PDK the one that ships the VACASK collateral?" % pdk_rc)
+    dst = os.path.join(out, ".vacaskrc.toml")
+    extra = [os.path.abspath(d) for d in add if os.path.isdir(d)]
 
-
-def main():
-    ap = argparse.ArgumentParser(description=__doc__,
-                                 formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--pdk-rc", required=True, help="the PDK's .vacaskrc.toml")
-    ap.add_argument("--out", required=True, help="directory holding the toplevel netlist")
-    ap.add_argument("--add", action="append", default=[],
-                    help="directory to put in front of the include path (repeatable)")
-    ap.add_argument("--run", metavar="NETLIST", default=None,
-                    help="after writing the config, run vacask on NETLIST from --out")
-    a = ap.parse_args()
-
-    if not os.path.isfile(a.pdk_rc):
-        sys.exit("%s not found: is $PDK the one that ships the VACASK collateral?" % a.pdk_rc)
-    dst = os.path.join(a.out, ".vacaskrc.toml")
-    extra = [os.path.abspath(d) for d in a.add if os.path.isdir(d)]
-
-    if tomllib is None or not extra:
-        # No parser, or nothing to add: the PDK's file verbatim is still correct.
-        with open(a.pdk_rc, "rb") as fh:
+    def copy_verbatim():
+        with open(pdk_rc, "rb") as fh:
             body = fh.read()
         with open(dst, "wb") as fh:
             fh.write(body)
-        if extra:
-            print("  tomllib missing, copied the PDK rc unchanged; "
-                  "includes outside the PDK will not resolve")
-        return run(a)
+        return dst
 
-    with open(a.pdk_rc, "rb") as fh:
+    if tomllib is None or not extra:
+        # No parser, or nothing to add: the PDK's file verbatim is still correct.
+        if extra:
+            print("  tomllib missing, copied the PDK rc unchanged, "
+                  "includes outside the PDK will not resolve")
+        return copy_verbatim()
+
+    with open(pdk_rc, "rb") as fh:
         cfg = tomllib.load(fh)
     paths = dict(cfg.get("Paths", {}))
     have = list(paths.get("include_path_prefix", []))
@@ -103,17 +88,31 @@ def main():
         back = tomllib.loads(text)
         assert back == cfg
     except Exception as exc:
-        with open(a.pdk_rc, "rb") as fh:
-            body = fh.read()
-        with open(dst, "wb") as fh:
-            fh.write(body)
-        print("  WARNING: cannot re-emit %s (%s)" % (a.pdk_rc, exc))
-        print("  copied it unchanged; includes outside the PDK will not resolve")
-        return run(a)
+        print("  WARNING: cannot re-emit %s (%s)" % (pdk_rc, exc))
+        print("  copied it unchanged, includes outside the PDK will not resolve")
+        return copy_verbatim()
     with open(dst, "w") as fh:
         fh.write(text)
     print("  %s: include path + %s" % (dst, ", ".join(extra)))
-    return run(a)
+    return dst
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__,
+                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--pdk-rc", required=True, help="the PDK's .vacaskrc.toml")
+    ap.add_argument("--out", required=True, help="directory holding the toplevel netlist")
+    ap.add_argument("--add", action="append", default=[],
+                    help="directory to put in front of the include path (repeatable)")
+    ap.add_argument("--run", metavar="NETLIST", default=None,
+                    help="after writing the config, run vacask on NETLIST from --out")
+    a = ap.parse_args()
+    write_rc(a.pdk_rc, a.out, a.add)
+    if not a.run:
+        return 0
+    net = os.path.abspath(a.run)
+    os.chdir(a.out)                 # vacask writes its raws into the current directory
+    os.execvp("vacask", ["vacask", net])
 
 
 if __name__ == "__main__":

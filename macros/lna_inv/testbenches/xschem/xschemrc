@@ -83,7 +83,6 @@ if {[info exists ::env(PDK_ROOT)] && [info exists ::env(PDK)]} {
     # itself, which keeps it a single command.
     set _setup "python3 $_helper --pdk-rc $_rc --out $_tbdir/simulations"
     append _setup " --add [file join $_macro schematic xschem]"
-    append _setup " --add [file normalize [file join $_macro ../mixer/schematic/xschem]]"
     set sim(spectre,0,cmd) "$_setup --run \"\$N\""
     set sim(spectre,0,name) {Vacask}
     set sim(spectre,0,fg) 0
