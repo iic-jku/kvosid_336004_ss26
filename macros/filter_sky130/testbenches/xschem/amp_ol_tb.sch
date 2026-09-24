@@ -14,9 +14,9 @@ lab=vid}
 N 210 -490 210 -420 {
 lab=GND}
 N 630 -660 720 -660 {
-lab=vi_p}
+lab=vin_p}
 N 630 -500 720 -500 {
-lab=vi_n}
+lab=vin_n}
 N 520 -200 520 -170 {
 lab=GND}
 N 920 -470 920 -440 {
@@ -26,13 +26,13 @@ lab=VDD}
 N 810 -230 810 -200 {
 lab=GND}
 N 720 -660 720 -620 {
-lab=vi_p}
+lab=vin_p}
 N 720 -620 780 -620 {
-lab=vi_p}
+lab=vin_p}
 N 720 -540 720 -500 {
-lab=vi_n}
+lab=vin_n}
 N 720 -540 780 -540 {
-lab=vi_n}
+lab=vin_n}
 N 1050 -620 1140 -620 {
 lab=voutn}
 N 1050 -540 1140 -540 {
@@ -178,8 +178,8 @@ C {devices/lab_pin.sym} 520 -300 1 0 {name=p61 sig_type=std_logic lab=di_pon}
 C {devices/title.sym} 200 -80 0 0 {name=l3 author="Michael Koefinger"}
 C {devices/gnd.sym} 920 -440 0 0 {name=l5 lab=GND}
 C {devices/vdd.sym} 920 -710 0 0 {name=l6 lab=VDD}
-C {devices/lab_pin.sym} 660 -660 1 1 {name=p6 sig_type=std_logic lab=vi_p}
-C {devices/lab_pin.sym} 660 -500 3 1 {name=p7 sig_type=std_logic lab=vi_n}
+C {devices/lab_pin.sym} 660 -660 1 1 {name=p6 sig_type=std_logic lab=vin_p}
+C {devices/lab_pin.sym} 660 -500 3 1 {name=p7 sig_type=std_logic lab=vin_n}
 C {devices/vcvs.sym} 810 -260 0 0 {name=E7 value=1}
 C {devices/gnd.sym} 810 -200 0 0 {name=l50 lab=GND}
 C {devices/lab_pin.sym} 740 -280 0 0 {name=l53 sig_type=std_logic lab=voutp

@@ -5,7 +5,7 @@ V {}
 S {}
 F {}
 E {}
-T {Rosenstark Loop Gain TB} 390 -1370 0 0 1 1 {}
+T {Middlebrook Loop Gain TB} 390 -1370 0 0 1 1 {}
 N 620 -230 620 -210 {
 lab=vout1}
 N 60 -570 60 -530 {
@@ -207,7 +207,7 @@ N 1430 -520 1430 -380 {lab=voutp1}
 N 1040 -740 1430 -740 {lab=voutn1}
 N 1030 -740 1040 -740 {lab=voutn1}
 N 1030 -380 1430 -380 {lab=voutp1}
-C {devices/vsource.sym} 60 -500 0 0 {name=VIN value="0 AC 1"
+C {devices/vsource.sym} 60 -500 0 0 {name=VIN value="0"
 }
 C {devices/launcher.sym} 270 -900 0 0 {name=h1
 descr="Annotate OP"
@@ -215,7 +215,7 @@ tclcommand="set show_hidden_texts 1; xschem annotate_op"}
 C {devices/lab_pin.sym} 60 -570 1 0 {name=l1 sig_type=std_logic lab=vid}
 C {devices/lab_pin.sym} 620 -230 0 1 {name=l1 sig_type=std_logic lab=vout1}
 C {devices/gnd.sym} 60 -400 0 0 {name=l1 lab=GND}
-C {devices/code_shown.sym} -1070 -1420 0 0 {name=STIMULI
+C {devices/code_shown.sym} -1240 -1500 0 0 {name=STIMULI
 only_toplevel=false
 value="
 .options savecurrents
@@ -254,13 +254,30 @@ option numdgt=3
 
 
 ** Main Simulations
+	* The loop is cut at the amplifier inputs. Vxp and Vxn sit in series between the summing
+	* nodes vr_n, vr_p and the gates, Ixp and Ixn inject into the gates, both differentially.
 	op
+
+	* run 1, voltage injection: the probe sources carry +-0.5 V, the probe currents are off
 	ac dec 100 $&const.f_min $&const.f_max
-	
-	setplot ac1
-	let A1 = v(vout1)/v(vid)
-	let A2 = v(vout)/v(vid)
-	let L = v(vr)/v(vid)
+	let va1 = v(vi_opa_p) - v(vi_opa_n)
+	let vb1 = v(vr_n) - v(vr_p)
+	let i1 = (i(Vxp) - i(Vxn))/2
+
+	* run 2, current injection: the probe currents carry 1 A differential, the probe sources are off
+	alter @Vxp[acmag] = 0
+	alter @Vxn[acmag] = 0
+	alter @Ixp[acmag] = 1
+	alter @Ixn[acmag] = 1
+	ac dec 100 $&const.f_min $&const.f_max
+	let va2 = v(vi_opa_p) - v(vi_opa_n)
+	let i2 = (i(Vxp) - i(Vxn))/2
+
+	* Middlebrook 1975: the voltage and the current loop gain at the cut, exact when nothing flows back through it
+	let Tv = -ac1.vb1/ac1.va1
+	let Ti = i2/(1 - i2)
+	let L = (Tv*Ti - 1)/(Tv + Ti + 2)
+
 	let A = L/beta
 
 	let L_re = real(L)
@@ -281,6 +298,14 @@ option numdgt=3
 
 	print pm
 
+	* gain margin, and how close the Nyquist curve comes to -1 anywhere
+	meas ac L180_dB find L_dB when L_arg=-180
+	let gm = -L180_dB
+	print gm
+	let L_dist = mag(1+L)
+	meas ac dist_min min L_dist
+	print dist_min
+
 	meas ac L0_dB find L_dB when frequency = fdc
 	let err_gain = 1/(1+10^(L0_dB/20))
 
@@ -289,12 +314,11 @@ option numdgt=3
 	plot L_dB L_arg A_dB A_arg title 'Bode Plot of Loop Gain' ylabel 'Magnitude (dB) / Phase (Deg)'
 	plot L_im vs L_re retraceplot title 'Nyquist Plot of Loop Gain' ylabel 'Imaginary Part' xlabel 'Real Part' 
 
-
 alter @VIN[DC] = 0
 op
 
 remzerovec
-write filter_loopgain_tb.raw
+write filter_loopgain_middlebrook_tb.raw
 .endc"}
 C {devices/vcvs.sym} 620 -180 0 0 {name=E4 value=1}
 C {devices/gnd.sym} 620 -120 0 0 {name=l18 lab=GND}
@@ -383,26 +407,14 @@ C {devices/lab_pin.sym} 770 -610 3 1 {name=l24 sig_type=std_logic lab=vr_n
 }
 C {devices/lab_pin.sym} 900 -420 2 0 {name=p1 sig_type=std_logic lab=vinn}
 C {devices/lab_pin.sym} 900 -700 2 0 {name=p2 sig_type=std_logic lab=vipp}
-C {devices/capa.sym} 880 -460 0 0 {name=C7
-m=1
-value=1G
-footprint=1206
-device="ceramic capacitor"}
-C {devices/capa.sym} 880 -660 0 0 {name=C8
-m=1
-value=1G
-footprint=1206
-device="ceramic capacitor"}
-C {devices/ind.sym} 820 -510 1 0 {name=L25
-m=1
-value=1G
-footprint=1206
-device=inductor}
-C {devices/ind.sym} 820 -610 1 0 {name=L28
-m=1
-value=1G
-footprint=1206
-device=inductor}
+C {devices/isource.sym} 880 -460 0 0 {name=Ixn
+value="dc 0 ac 0"}
+C {devices/isource.sym} 880 -660 0 0 {name=Ixp
+value="dc 0 ac 0"}
+C {devices/vsource.sym} 820 -510 1 0 {name=Vxn
+value="dc 0 ac 0.5 180"}
+C {devices/vsource.sym} 820 -610 1 0 {name=Vxp
+value="dc 0 ac 0.5"}
 C {devices/gnd.sym} 1140 -430 0 0 {name=l30 lab=GND}
 C {devices/lab_pin.sym} 960 -610 3 0 {name=p7 sig_type=std_logic lab=vi_opa_p}
 C {devices/lab_pin.sym} 960 -510 3 0 {name=p8 sig_type=std_logic lab=vi_opa_n}
